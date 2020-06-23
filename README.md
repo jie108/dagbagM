@@ -4,7 +4,6 @@
 - [Usage](#Usage)
 - [Arguments](#Arguments)
 - [Value](#Value)
-- [Note](#Note)
 - [Examples](#Examples)
 - [Contributions](#contributions)
 
