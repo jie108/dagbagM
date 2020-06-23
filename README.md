@@ -71,22 +71,20 @@ hc(Y, node.type, whiteList, blackList, maxStep = 5, verbose = FALSE)
 | Y	       |	           |an n by p data matrix: n – sample size, p – number of variables
 | n.boot         | 0           |an integer: the number of bootstrap resamples of the data matrix Y, default = 0, meaning no bootstrapping
 | score.type 	       |	BIC	            |a string: "BIC" or "likelihood"
-| threshold  		       | 0	           | a nonnegative scalar: the cutoff value for the change of the score to decide whether to stop the search; default = 0, meaning stop search when score is not improved
-
+| threshold  		       | 0	           | a nonnegative scalar: the cutoff value for the change of the score to decide whether to stop the search
 | max.step		           | 500             |an integer: the maximum number of search steps of the hill climbing algorithm
-
-| ini.adj.matrix	 	        | NULL           | a p by p 0-1 matrix: the initial graph, default = NULL, meaning the empty graph
+| ini.adj.matrix	 	 | NULL           | a p by p 0-1 matrix: the initial graph, default = NULL, meaning the empty graph
 | blacklist	         | NULL             | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
 | whitelist          | NULL           |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
 | standardize       | TRUE  | logical: whether to standardize the data to have mean zero and sd one
 | standardize.boot   | TRUE         | logical: whether to standardize the bootstrap resamples
-| random.forest			             | FALSE	           | logical: whether to use the "random forest" idea for further variance reduction
-| random.step.length			     |          | a vector: specify “random forest" steps
-| nrestart			             | 0    	     | an integer: number of times to restart the search algorithm after a local optimal is achieved. The purpose is to search for global optimal
+| random.forest		   | FALSE	    | logical: whether to use the "random forest" idea for further variance reduction
+| random.step.length	  |          | a vector: specify “random forest" steps
+| nrestart		  | 0    	     | an integer: number of times to restart the search algorithm after a local optimal is achieved. The purpose is to search for global optimal
 | perturb		    | 0     	     | an integer: how many random addition/deletion/reversal operations should be used in each random restart
-| shuffle		      |   FALSE 	   | logic: whether to shuffle the order of variables before DAG learning. The purpose is to avoid potential systematic biases in simulation studies (due to possible coincidence of the topological ordering and the nominal ordering of the variables),
-| print		     |     FALSE     | logical: whether print the step information
-| EPS		     |     1e-06     | a scalar: a number to indicate a threshold below which values will be treated as zero
+| shuffle		  |   FALSE 	   | logic: whether to shuffle the order of variables before DAG learning. The purpose is to avoid potential systematic biases in simulation studies
+| print	  |     FALSE     | logical: whether print the step information
+| EPS     |     1e-06     | a scalar: a number to indicate a threshold below which values will be treated as zero
 
 
 ## Arguments for score_shd
@@ -106,6 +104,8 @@ hc(Y, node.type, whiteList, blackList, maxStep = 5, verbose = FALSE)
 ```
 a list of three components
 
+| Object       | Description   |
+| :------------------------ | :-------------|
 | adj.matrix	  | adjacency matrix of the aggregated DAG
 | final.step    | a number recording how many search steps are conducted before the procedure stops
 | movement	    | a matrix recording the selected operation, addition, deletion or reversal of an edge, at each search step
