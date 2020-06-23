@@ -40,7 +40,6 @@ install_github("jie108/dagbag/dagbagM")
 ```
 
 ## Usage
-```
 
 | dagbag |
 
@@ -52,16 +51,13 @@ random.forest=FALSE, random.step.length=NULL, nrestart=0, perturb=0, shuffle=FAL
 score_shd: A function to use structural hamming distance to aggregate DAGs. It aggregates an ensemble of DAGs to get a DAG that minimizes the overall distance to the ensemble.
 
 score_shd(boot.adj, alpha = 1, threshold=0, max.step = 500, blacklist = NULL, whitelist = NULL, print = FALSE)
-```
 
-```
 | dagbagM |
 
 hc: A function to learn a DAG model by the hill climbing algorithm for mixture of continuous and binary variables
 
 hc(Y, node.type, whiteList, blackList, maxStep = 5, verbose = FALSE)
 
-```
 
 
 ## Arguments for score
