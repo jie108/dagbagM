@@ -28,12 +28,12 @@ identify prognostic protein biomarkers in ovarian cancer".
 
 ```
 
-Install dagbag
+### Install dagbag
 ```
 install_github("jie108/dagbag/dagbag")
 ```
 
-Install dagbagM
+### Install dagbagM
 ```
 install_github("jie108/dagbag/dagbagM")
 ```
@@ -42,7 +42,7 @@ install_github("jie108/dagbag/dagbagM")
 ## Usage
 ```
 
-# dagbag 
+### dagbag 
 
 score: A function to learn a DAG model by the hill climbing algorithm. It can be used to build an ensemble of DAGs (in form of adjacency matrices) based on bootstrap resamples of the data
 
@@ -55,7 +55,7 @@ score_shd(boot.adj, alpha = 1, threshold=0, max.step = 500, blacklist = NULL, wh
 ```
 
 ```
-# dagbagM 
+### dagbagM 
 
 hc: A function to learn a DAG model by the hill climbing algorithm for mixture of continuous and binary variables
 
@@ -110,7 +110,7 @@ a list of three components
 | final.step    | a number recording how many search steps are conducted before the procedure stops
 | movement	    | a matrix recording the selected operation, addition, deletion or reversal of an edge, at each search step
 
-```
+
 
 ## Examples
 ```
@@ -119,22 +119,22 @@ Y.n=example$Y # data matrix
 true.dir=example$true.dir  #adjacency matrix of the data generating DAG
 true.ske=example$true.ske  # skeleton graph of the data generating DAG
 
-(i) DAG learning  by hill climbing: no aggregation
+(i) DAG learning by hill climbing: no aggregation
 
 temp=score(Y=Y.n, n.boot=0, score.type="BIC") 
 adj=temp$adj.matrix
 
 
-(ii) DAG learning by bagging  
+(ii) DAG learning by bootstrap aggregation  
 
 set.seed(1)
 
-# generating DAGs for bootstrap resamples
+### generating DAGs for bootstrap resamples
 
 temp.boot=score(Y.n, n.boot=10, score.type="BIC") 
 boot.adj=temp.boot$adj.matrix
 
-# aggregating DAGs to lern an ensemble
+### aggregating DAGs to lern an ensemble
 
 temp.bag=score_shd(boot.adj, alpha = 1) 
 adj.bag=temp.bag$adj.matrix
