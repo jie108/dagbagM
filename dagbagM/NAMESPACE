@@ -1,0 +1,3 @@
+useDynLib(dagbagM, .registration=TRUE)
+export(hc)
+importFrom(Rcpp, evalCpp)
