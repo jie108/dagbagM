@@ -101,7 +101,7 @@ hc(Y, node.type, whiteList, blackList, maxStep = 5, verbose = FALSE)
 
 
 ## Value for score and score_shd
-```
+
 a list of three components
 
 | Object       | Description   |
