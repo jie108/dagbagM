@@ -42,7 +42,7 @@ install_github("jie108/dagbag/dagbagM")
 ## Usage
 ```
 
-### dagbag 
+| dagbag |
 
 score: A function to learn a DAG model by the hill climbing algorithm. It can be used to build an ensemble of DAGs (in form of adjacency matrices) based on bootstrap resamples of the data
 
@@ -55,7 +55,7 @@ score_shd(boot.adj, alpha = 1, threshold=0, max.step = 500, blacklist = NULL, wh
 ```
 
 ```
-### dagbagM 
+| dagbagM |
 
 hc: A function to learn a DAG model by the hill climbing algorithm for mixture of continuous and binary variables
 
