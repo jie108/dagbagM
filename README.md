@@ -13,11 +13,14 @@
 
 This repository contains 3 folders. 
 
-## dagbag: contains the R package "dagbag" for learning directed acycic graphs via bootstrap aggregation for continuous variables
+## dagbag: 
+contains the R package "dagbag" for learning directed acycic graphs via bootstrap aggregation for continuous variables
 
-## dagbagM: contains the R package "dagbagM" for learning directed acycic graphs via bootstrap aggregation for mixture of continuous and binary variables
+## dagbagM: 
+contains the R package "dagbagM" for learning directed acycic graphs via bootstrap aggregation for mixture of continuous and binary variables
 
-## Simulation_scripts: contains the R scripts for replicating the simulation results in the manuscript: "Dagbag: an algorithm for learning directed acyclic graphs to 
+## Simulation_scripts: 
+contains the R scripts for replicating the simulation results in the manuscript: "Dagbag: an algorithm for learning directed acyclic graphs to 
 identify prognostic protein biomarkers in ovarian cancer".
 
 
@@ -142,4 +145,4 @@ adj.bag=temp.bag$adj.matrix
 
 ## Contributions
 
-If you find small bugs, larger issues, or have suggestions, please email the maintainer at <shrabanti.chowdhury@mssm.edu> or <weiping.ma@mssm.edu>. Contributions (via pull requests or otherwise) are welcome.
+If you find small bugs, larger issues, or have suggestions, please email the maintainer at <jiepeng108@gmail.com>. Contributions (via pull requests or otherwise) are welcome.
