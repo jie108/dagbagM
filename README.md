@@ -96,32 +96,53 @@ hc(Y, node.type, whiteList, blackList, maxStep = 5, verbose = FALSE)
 | print		     |     FALSE     | logical: whether print the step information
 
 
+## Arguments for hc
+  
+| Parameter                 | Default       | Description   |	
+| :------------------------ |:-------------:| :-------------|
+| Y	       |	           |an n by p data matrix: n – sample size, p – number of variables
+| node.type  		       |         | a vector of length equal to the number of variables specifying the type of variable/node type: "c" for continuous and "b" for binary
+| maxStep		           | 500    |an integer: the maximum number of search steps of the hill climbing algorithm
+| blacklist	         | NULL    | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
+| whitelist          | NULL   |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
+| verbose		     | FALSE   | logical: whether print the step information
+| tol     |     1e-06     | a scalar: a number to indicate a threshold below which values will be treated as zero
+
 ## Value for score and score_shd
 
 a list of three components
 
 | Object       | Description   |
 | :------------------------ | :-------------|
-| adj.matrix	  | adjacency matrix of the aggregated DAG
+| adj.matrix	  | adjacency matrix of the learned DAG
 | final.step    | a number recording how many search steps are conducted before the procedure stops
 | movement	    | a matrix recording the selected operation, addition, deletion or reversal of an edge, at each search step
 
+## Value for score and hc
 
+a list of three components
+
+| Object       | Description   |
+| :------------------------ | :-------------|
+| adjacency	  | adjacency matrix of the learned DAG
+| score       | BIC score at each search step
+| operations  | a matrix recording the selected operation, addition, deletion or reversal of an edge, at each search step
+| deltaMin    |   
 
 ## Examples
 ```
+(i) **DAG learning by hill climbing for continuous nodes: no aggregation**
+
 data(example)
 Y.n=example$Y # data matrix 
 true.dir=example$true.dir  #adjacency matrix of the data generating DAG
 true.ske=example$true.ske  # skeleton graph of the data generating DAG
 
-(i) DAG learning by hill climbing: no aggregation
-
 temp=score(Y=Y.n, n.boot=0, score.type="BIC") 
 adj=temp$adj.matrix
 
 
-(ii) DAG learning by bootstrap aggregation  
+(ii) DAG learning by bootstrap aggregation for continuous nodes 
 
 set.seed(1)
 
@@ -134,6 +155,11 @@ boot.adj=temp.boot$adj.matrix
 
 temp.bag=score_shd(boot.adj, alpha = 1) 
 adj.bag=temp.bag$adj.matrix
+
+(iii) DAG learning by bootstrap aggregation for mixture of continuous and binary nodes
+
+temp<- hc(Y, rep("c",p), whiteList, blackList, verbose=F)
+adj=temp$adjacency
 
 ```
 
