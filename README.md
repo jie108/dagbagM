@@ -12,7 +12,7 @@
 
 This repository contains 3 folders. 
 
-## dagbag: 
+## dagbagC: 
 contains the R package "dagbag" for learning directed acycic graphs via bootstrap aggregation for continuous variables
 
 ## dagbagM: 
