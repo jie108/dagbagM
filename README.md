@@ -59,8 +59,9 @@ hc: A function to learn a DAG model by the hill climbing algorithm for mixture o
 hc(Y, node.type, whiteList, blackList, maxStep = 5, verbose = FALSE)
 ```
 
+## Arguments
 
-## Arguments for score
+### Arguments for score
   
 | Parameter                 | Default       | Description   |	
 | :------------------------ |:-------------:| :-------------|
@@ -83,7 +84,7 @@ hc(Y, node.type, whiteList, blackList, maxStep = 5, verbose = FALSE)
 | EPS     |     1e-06     | a scalar: a number to indicate a threshold below which values will be treated as zero
 
 
-## Arguments for score_shd
+### Arguments for score_shd
   
 | Parameter                 | Default       | Description   |	
 | :------------------------ |:-------------:| :-------------|
@@ -96,7 +97,7 @@ hc(Y, node.type, whiteList, blackList, maxStep = 5, verbose = FALSE)
 | print		     |     FALSE     | logical: whether print the step information
 
 
-## Arguments for hc
+### Arguments for hc
   
 | Parameter                 | Default       | Description   |	
 | :------------------------ |:-------------:| :-------------|
@@ -108,7 +109,9 @@ hc(Y, node.type, whiteList, blackList, maxStep = 5, verbose = FALSE)
 | verbose		     | FALSE   | logical: whether print the step information
 | tol     |     1e-06     | a scalar: a number to indicate a threshold below which values will be treated as zero
 
-## Value for score and score_shd
+## Value
+
+### Value for score and score_shd
 
 a list of three components
 
@@ -118,7 +121,7 @@ a list of three components
 | final.step    | a number recording how many search steps are conducted before the procedure stops
 | movement	    | a matrix recording the selected operation, addition, deletion or reversal of an edge, at each search step
 
-## Value for score and hc
+### Value for hc
 
 a list of three components
 
