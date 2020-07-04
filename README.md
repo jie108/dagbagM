@@ -28,7 +28,7 @@ identify prognostic protein biomarkers in ovarian cancer".
 
 ```
 
-### Install dagbag
+### Install dagbagC
 ```
 install_github("jie108/dagbag/dagbag")
 ```
@@ -41,7 +41,7 @@ install_github("jie108/dagbag/dagbagM")
 
 ## Usage
 ```
-dagbag
+dagbagC
 score: A function to learn a DAG model by the hill climbing algorithm. It can be used to build an ensemble of DAGs (in form of adjacency matrices) based on bootstrap resamples of the data
 
 score(Y, n.boot=0, score.type="BIC", threshold=0, max.step=500,  ini.adj.matrix=NULL, blacklist=NULL, whitelist=NULL, standardize=TRUE,  standardize.boot=TRUE, 
