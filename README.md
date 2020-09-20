@@ -15,7 +15,7 @@ This repository contains 3 folders.
 ## dagbagM: 
 contains the R package "dagbagM" for learning directed acycic graphs for mixture of continuous and binary variables
 
-## dagbagC: 
+## dagbag_bagging: 
 contains the R package "dagbag" that is used for bootstrap aggregation in simulation and real data
 
 ## Simulation_scripts: 
