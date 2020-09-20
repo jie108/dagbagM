@@ -1,4 +1,4 @@
-# Learning directed acyclic graphs via bootstrap aggregation
+# DAGBagM: Learning Directed Acyclic Graphs via Bootstrap Aggregation of Mixed Variables
 - [Overview](#Overview)
 - [Installation](#installation)
 - [Usage](#Usage)
@@ -12,79 +12,78 @@
 
 This repository contains 3 folders. 
 
-## dagbagC: 
-contains the R package "dagbag" for learning directed acycic graphs via bootstrap aggregation for continuous variables
-
 ## dagbagM: 
-contains the R package "dagbagM" for learning directed acycic graphs via bootstrap aggregation for mixture of continuous and binary variables
+contains the R package "dagbagM" for learning directed acycic graphs for mixture of continuous and binary variables
+
+## dagbagC: 
+contains the R package "dagbag" that is used for bootstrap aggregation in simulation and real data
 
 ## Simulation_scripts: 
-contains the R scripts for replicating the simulation results in the manuscript: "Dagbag: an algorithm for learning directed acyclic graphs to 
-identify prognostic protein biomarkers in ovarian cancer".
+contains the R scripts for replicating the simulation results in the manuscript: "DAGBagM: Learning directed acyclic graphs of mixed variableswith an application to identify prognostic protein biomarkers inovarian cancer".
 
 
 
 ## Installation
 
 ```
+### Install dagbagM
+```
+install_github("jie108/dagbag/dagbagM")
+```
 
 ### Install dagbagC
 ```
 install_github("jie108/dagbag/dagbag")
 ```
-
-### Install dagbagM
-```
-install_github("jie108/dagbag/dagbagM")
-```
 ```
 
 ## Usage
+
 ```
-dagbagC
-score: A function to learn a DAG model by the hill climbing algorithm. It can be used to build an ensemble of DAGs (in form of adjacency matrices) based on bootstrap resamples of the data
+dagbagM
 
-score(Y, n.boot=0, score.type="BIC", threshold=0, max.step=500,  ini.adj.matrix=NULL, blacklist=NULL, whitelist=NULL, standardize=TRUE,  standardize.boot=TRUE, 
-random.forest=FALSE, random.step.length=NULL, nrestart=0, perturb=0, shuffle=FALSE, print=FALSE, EPS=1e-06)
+hc: A function to learn a DAG model for the given data with no bootstrap resamples by the hill climbing algorithm for mixture of continuous and binary variables
 
-score_shd: A function to use structural hamming distance to aggregate DAGs. It aggregates an ensemble of DAGs to get a DAG that minimizes the overall distance to the ensemble.
+dagbagM::hc(Y=Y.n,nodeType, whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=10, seed,  verbose = FALSE)
+
+
+hc_boot_parallel: A function to learn a DAG model for every bootstrap resmples of the given data by the hill climbing algorithm for mixture of continuous and binary variables
+
+dagbagM::hc_boot_parallel(Y, node.type, n.boot, whiteList, blackList, maxStep, standardize, tol, maxStep, restart, seed, nodeShuffle, numThread, verbose)
+```
+
+
+```
+dagbag
+
+score_shd: A function to use structural hamming distance to aggregate DAGs. It aggregates an ensemble of DAGs to obtain a DAG that minimizes the overall distance to the ensemble.
 
 score_shd(boot.adj, alpha = 1, threshold=0, max.step = 500, blacklist = NULL, whitelist = NULL, print = FALSE)
 ```
 ```
-dagbagM
 
-hc: A function to learn a DAG model by the hill climbing algorithm for mixture of continuous and binary variables
-
-hc(Y, node.type, whiteList, blackList, maxStep = 5, verbose = FALSE)
-```
 
 ## Arguments
 
-### Arguments for score
+### Arguments for hc and hc_boot_parallel in dagbagM
   
 | Parameter                 | Default       | Description   |	
 | :------------------------ |:-------------:| :-------------|
-| Y	       |	           |an n by p data matrix: n – sample size, p – number of variables
-| n.boot         | 0           |an integer: the number of bootstrap resamples of the data matrix Y, default = 0, meaning no bootstrapping
-| score.type 	       |	BIC	            |a string: "BIC" or "likelihood"
-| threshold  		       | 0	           | a nonnegative scalar: the cutoff value for the change of the score to decide whether to stop the search
-| max.step		           | 500             |an integer: the maximum number of search steps of the hill climbing algorithm
-| ini.adj.matrix	 	 | NULL           | a p by p 0-1 matrix: the initial graph, default = NULL, meaning the empty graph
-| blacklist	         | NULL             | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
-| whitelist          | NULL           |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
-| standardize       | TRUE  | logical: whether to standardize the data to have mean zero and sd one
-| standardize.boot   | TRUE         | logical: whether to standardize the bootstrap resamples
-| random.forest		   | FALSE	    | logical: whether to use the "random forest" idea for further variance reduction
-| random.step.length	  |          | a vector: specify “random forest" steps
-| nrestart		  | 0    	     | an integer: number of times to restart the search algorithm after a local optimal is achieved. The purpose is to search for global optimal
-| perturb		    | 0     	     | an integer: how many random addition/deletion/reversal operations should be used in each random restart
-| shuffle		  |   FALSE 	   | logic: whether to shuffle the order of variables before DAG learning. The purpose is to avoid potential systematic biases in simulation studies
-| print	  |     FALSE     | logical: whether print the step information
-| EPS     |     1e-06     | a scalar: a number to indicate a threshold below which values will be treated as zero
+| Y	       |	           | an n by p data matrix: n – sample size, p – number of variables
+| n.boot (only for hc_boot_parallel) |      0       | an integer: the number of bootstrap resamples of the data matrix Y
+| node.type  		       |         | a vector of length equal to the number of variables specifying the type of variable/node type: "c" for continuous and "b" for binary
+| maxStep		           | 500    |an integer: the maximum number of search steps of the hill climbing algorithm
+| standardize |  TRUE | logical: whether to standardize the data to have mean zero and sd one
+| nodeShuffle (hc_boot_parallel) | FALSE | logical: whether to shuffle the order of the variables before DAG learning
+| restart | 0 | an integer: number of times to restart the search algorithm after a local optimal is achieved. The purpose is to search for global optimal
+| blacklist	         | NULL    | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
+| whitelist          | NULL   |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
+| tol     |     1e-06     | a scalar: a number to indicate a threshold below which values will be treated as zero
+| verbose		     | FALSE   | logical: whether print the step information
 
 
-### Arguments for score_shd
+
+### Arguments for score_shd in dagbag
   
 | Parameter                 | Default       | Description   |	
 | :------------------------ |:-------------:| :-------------|
@@ -97,21 +96,30 @@ hc(Y, node.type, whiteList, blackList, maxStep = 5, verbose = FALSE)
 | print		     |     FALSE     | logical: whether print the step information
 
 
-### Arguments for hc
-  
-| Parameter                 | Default       | Description   |	
-| :------------------------ |:-------------:| :-------------|
-| Y	       |	           |an n by p data matrix: n – sample size, p – number of variables
-| node.type  		       |         | a vector of length equal to the number of variables specifying the type of variable/node type: "c" for continuous and "b" for binary
-| maxStep		           | 500    |an integer: the maximum number of search steps of the hill climbing algorithm
-| blacklist	         | NULL    | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
-| whitelist          | NULL   |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
-| verbose		     | FALSE   | logical: whether print the step information
-| tol     |     1e-06     | a scalar: a number to indicate a threshold below which values will be treated as zero
 
 ## Value
 
-### Value for score and score_shd
+### Value for dagbagM::hc
+
+a list of three components
+
+| Object       | Description   |
+| :------------------------ | :-------------|
+| adjacency	  | adjacency matrix of the learned DAG
+| score       | BIC score at each search step
+| operations  | a matrix recording the selected operation, addition, deletion or reversal of an edge, at each search step
+| deltaMin    | Minimum value of the score change at every step
+
+### Value for dagbagM::hc_boot_parallel
+
+a list of three components
+
+| Object       | Description   |
+| :------------------------ | :-------------|
+| adjacency	  | adjacency matrix of the learned DAG
+
+
+### Value for dagbag::score_shd
 
 a list of three components
 
@@ -121,48 +129,31 @@ a list of three components
 | final.step    | a number recording how many search steps are conducted before the procedure stops
 | movement	    | a matrix recording the selected operation, addition, deletion or reversal of an edge, at each search step
 
-### Value for hc
-
-a list of three components
-
-| Object       | Description   |
-| :------------------------ | :-------------|
-| adjacency	  | adjacency matrix of the learned DAG
-| score       | BIC score at each search step
-| operations  | a matrix recording the selected operation, addition, deletion or reversal of an edge, at each search step
-| deltaMin    |   
-
+  
 ## Examples
 ```
-(i) **DAG learning by hill climbing for continuous nodes: no aggregation**
+(i) **DAG learning by hill climbing for mixture of continuous and binary nodes: no bootstrap resamples**
 
 data(example)
 Y.n=example$Y # data matrix 
 true.dir=example$true.dir  #adjacency matrix of the data generating DAG
 true.ske=example$true.ske  # skeleton graph of the data generating DAG
 
-temp=score(Y=Y.n, n.boot=0, score.type="BIC") 
-adj=temp$adj.matrix
+temp<- dagbagM::hc(Y=Y.n,nodeType=c(rep("c",p), "b), whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=10, seed = 1,  verbose = FALSE)
+
+(i) **DAG learning by hill climbing for mixture of continuous and binary nodes: for bootstrap resamples**
+
+temp.boot<- dagbagM::hc_boot_parallel(Y=Y.n, n.boot=10, nodeType=c(rep("c",p),"b), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=10, seed = 1,  nodeShuffle=TRUE, numThread = 2,verbose = FALSE)
+
+boot.adj=temp.boot$adjacency
 
 
-(ii) DAG learning by bootstrap aggregation for continuous nodes 
+(ii) **Bootstrap aggregation of DAGs** 
 
 set.seed(1)
 
-### generating DAGs for bootstrap resamples
-
-temp.boot=score(Y.n, n.boot=10, score.type="BIC") 
-boot.adj=temp.boot$adj.matrix
-
-### aggregating DAGs to lern an ensemble
-
-temp.bag=score_shd(boot.adj, alpha = 1) 
+temp.bag=dagbag::score_shd(boot.adj, alpha = 1, threshold=0) 
 adj.bag=temp.bag$adj.matrix
-
-(iii) DAG learning by bootstrap aggregation for mixture of continuous and binary nodes
-
-temp<- hc(Y, rep("c",p), whiteList, blackList, verbose=F)
-adj=temp$adjacency
 
 ```
 
