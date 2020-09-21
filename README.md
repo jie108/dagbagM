@@ -60,7 +60,6 @@ score_shd: A function to use structural hamming distance to aggregate DAGs. It a
 
 score_shd(boot.adj, alpha, threshold, max.step, blacklist, whitelist, print)
 ```
-```
 
 
 ## Arguments
