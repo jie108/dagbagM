@@ -16,7 +16,7 @@ This repository contains 3 folders.
 contains the R package "dagbagM" for learning directed acycic graphs for mixture of continuous and binary variables
 
 ## dagbag_bagging: 
-contains the R package "dagbag" that is used for bootstrap aggregation in simulation and real data
+contains the R package "dagbag". The function dagbag::score_shd() can be used for aggregating the DAGs learnt from bootstrap resamples
 
 ## Simulation_scripts: 
 contains the R scripts for replicating the simulation results in the manuscript: "DAGBagM: Learning directed acyclic graphs of mixed variableswith an application to identify prognostic protein biomarkers inovarian cancer".
@@ -31,7 +31,7 @@ contains the R scripts for replicating the simulation results in the manuscript:
 install_github("jie108/dagbag/dagbagM")
 ```
 
-### Install dagbagC
+### Install dagbag
 ```
 install_github("jie108/dagbag/dagbag")
 ```
@@ -44,12 +44,12 @@ dagbagM
 
 hc: A function to learn a DAG model for the given data with no bootstrap resamples by the hill climbing algorithm for mixture of continuous and binary variables
 
-dagbagM::hc(Y=Y.n,nodeType, whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=10, seed,  verbose = FALSE)
+dagbagM::hc(Y,nodeType, whiteList, blackList, tol, standardize, maxStep, restart, seed,  verbose)
 
 
 hc_boot_parallel: A function to learn a DAG model for every bootstrap resmples of the given data by the hill climbing algorithm for mixture of continuous and binary variables
 
-dagbagM::hc_boot_parallel(Y, node.type, n.boot, whiteList, blackList, maxStep, standardize, tol, maxStep, restart, seed, nodeShuffle, numThread, verbose)
+dagbagM::hc_boot_parallel(Y, node.type, n.boot, whiteList, blackList, maxStep, standardize, tol, restart, seed, nodeShuffle, numThread, verbose)
 ```
 
 
@@ -58,7 +58,7 @@ dagbag
 
 score_shd: A function to use structural hamming distance to aggregate DAGs. It aggregates an ensemble of DAGs to obtain a DAG that minimizes the overall distance to the ensemble.
 
-score_shd(boot.adj, alpha = 1, threshold=0, max.step = 500, blacklist = NULL, whitelist = NULL, print = FALSE)
+score_shd(boot.adj, alpha, threshold, max.step, blacklist, whitelist, print)
 ```
 ```
 
@@ -79,6 +79,7 @@ score_shd(boot.adj, alpha = 1, threshold=0, max.step = 500, blacklist = NULL, wh
 | blacklist	         | NULL    | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
 | whitelist          | NULL   |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
 | tol     |     1e-06     | a scalar: a number to indicate a threshold below which values will be treated as zero
+| numThread |  |  an integer for running parallel computation of DAG learning from bootstrap resamples
 | verbose		     | FALSE   | logical: whether print the step information
 
 
