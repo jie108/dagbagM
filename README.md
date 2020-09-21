@@ -64,7 +64,7 @@ score_shd(boot.adj, alpha, threshold, max.step, blacklist, whitelist, print)
 
 ## Arguments
 
-### Arguments for hc and hc_boot_parallel in dagbagM
+### Arguments for dagbagM::hc and dagbagM::hc_boot_parallel
   
 | Parameter                 | Default       | Description   |	
 | :------------------------ |:-------------:| :-------------|
@@ -78,12 +78,12 @@ score_shd(boot.adj, alpha, threshold, max.step, blacklist, whitelist, print)
 | blacklist	         | NULL    | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
 | whitelist          | NULL   |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
 | tol     |     1e-06     | a scalar: a number to indicate a threshold below which values will be treated as zero
-| numThread |  |  an integer for running parallel computation of DAG learning from bootstrap resamples
+| numThread (only for hc_boot_parallel) |  |  an integer for running parallel computation of DAG learning from bootstrap resamples
 | verbose		     | FALSE   | logical: whether print the step information
 
 
 
-### Arguments for score_shd in dagbag
+### Arguments for dagbag::score_shd
   
 | Parameter                 | Default       | Description   |	
 | :------------------------ |:-------------:| :-------------|
@@ -132,7 +132,7 @@ a list of three components
   
 ## Examples
 ```
-(i) **DAG learning by hill climbing for mixture of continuous and binary nodes: no bootstrap resamples**
+(i) DAG learning by hill climbing for mixture of continuous and binary nodes: no bootstrap resample
 
 data(example)
 Y.n=example$Y # data matrix 
@@ -141,14 +141,14 @@ true.ske=example$true.ske  # skeleton graph of the data generating DAG
 
 temp<- dagbagM::hc(Y=Y.n,nodeType=c(rep("c",p), "b), whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=10, seed = 1,  verbose = FALSE)
 
-(i) **DAG learning by hill climbing for mixture of continuous and binary nodes: for bootstrap resamples**
+(ii) DAG learning by hill climbing for mixture of continuous and binary nodes: for bootstrap resamples
 
 temp.boot<- dagbagM::hc_boot_parallel(Y=Y.n, n.boot=10, nodeType=c(rep("c",p),"b), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=10, seed = 1,  nodeShuffle=TRUE, numThread = 2,verbose = FALSE)
 
 boot.adj=temp.boot$adjacency
 
 
-(ii) **Bootstrap aggregation of DAGs** 
+(iii) Bootstrap aggregation of DAGs learnt from bootstrap resamples
 
 set.seed(1)
 
