@@ -17,5 +17,5 @@ This file has the scripts for summarizing the results obatained using simulation
 ## Run_time_comparison
 This file has the scipt for comparing the run time (Fig. 3) of one DAG learning (no bootstrap) by DAGBagM and bnlearn R package (Scutari, 2009).
 
-## Run_time_comparison_adj_matrices
+## Run_time_comp_adj_matrices
 This folder contains all the true adjacency matrices for different number of nods and edges used for the run time comparison between DAGBagM and bnlearn.
