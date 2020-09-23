@@ -3,7 +3,7 @@
 
 ## data_generation.R
 
-This file has the scripts for generating data for simulation. 
+This file has the scripts for generating data for simulation with continuous and binary nodes. 
 
 ## simulation_continuous: 
 This file has the sripts for running dagbagM with and without bootstrap and MMHC and PC-alg for simulations with the continuous nodes only
