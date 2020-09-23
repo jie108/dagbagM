@@ -25,7 +25,7 @@ contains the R scripts for replicating the simulation results in the manuscript:
 
 ## Installation
 
-```
+
 ### Install dagbagM
 ```
 install_github("jie108/dagbag/dagbagM")
@@ -35,7 +35,7 @@ install_github("jie108/dagbag/dagbagM")
 ```
 install_github("jie108/dagbag/dagbag")
 ```
-```
+
 
 ## Usage
 
