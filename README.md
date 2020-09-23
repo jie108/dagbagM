@@ -1,6 +1,6 @@
 # DAGBagM: Learning Directed Acyclic Graphs via Bootstrap Aggregation for Mixture of Continuous and Binary Variables
 - [Overview](#Overview)
-- [Installation](#installation)
+- [Installation of the package](#installation)
 - [Usage](#Usage)
 - [Arguments](#Arguments)
 - [Value](#Value)
