@@ -1,6 +1,6 @@
 # DAGBagM: Learning Directed Acyclic Graphs via Bootstrap Aggregation for Mixture of Continuous and Binary Variables
 - [Overview](#Overview)
-- [Installation of the package](#installation)
+- [Installation of the package](#installation of packages)
 - [Usage](#Usage)
 - [Arguments](#Arguments)
 - [Value](#Value)
@@ -23,7 +23,7 @@ contains the R scripts for replicating the simulation results in the manuscript:
 
 
 
-## Installation
+## Installation of packages
 
 
 ### Install dagbagM
