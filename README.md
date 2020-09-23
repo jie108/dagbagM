@@ -28,6 +28,8 @@ contains the R scripts for replicating the simulation results in the manuscript:
 
 ### Install dagbagM
 ```
+require(doParallel)
+
 install_github("jie108/dagbag/dagbagM")
 ```
 
