@@ -34,12 +34,12 @@ contains the R scripts for replicating the simulation results in the manuscript:
 ```
 require(doParallel)
 
-install_github("jie108/dagbag/dagbagM")
+install_github("jie108/dagbagM/dagbagM")
 ```
 
 ### Install dagbag
 ```
-install_github("jie108/dagbag/dagbag")
+install_github("jie108/dagbagM/dagbag")
 ```
 
 
