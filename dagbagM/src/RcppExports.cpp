@@ -5,9 +5,9 @@
 
 using namespace Rcpp;
 
-// hc
-Rcpp::List hc(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeType, const Rcpp::LogicalMatrix& whiteList, const Rcpp::LogicalMatrix& blackList, double tol, int maxStep, bool verbose);
-RcppExport SEXP _dagbagM_hc(SEXP YSEXP, SEXP nodeTypeSEXP, SEXP whiteListSEXP, SEXP blackListSEXP, SEXP tolSEXP, SEXP maxStepSEXP, SEXP verboseSEXP) {
+// hc1
+Rcpp::List hc1(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeType, const Rcpp::LogicalMatrix& whiteList, const Rcpp::LogicalMatrix& blackList, double tol, unsigned int maxStep, unsigned int seed, bool flip, bool verbose);
+RcppExport SEXP _dagbagM_hc1(SEXP YSEXP, SEXP nodeTypeSEXP, SEXP whiteListSEXP, SEXP blackListSEXP, SEXP tolSEXP, SEXP maxStepSEXP, SEXP seedSEXP, SEXP flipSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -16,26 +16,39 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const Rcpp::LogicalMatrix& >::type whiteList(whiteListSEXP);
     Rcpp::traits::input_parameter< const Rcpp::LogicalMatrix& >::type blackList(blackListSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    Rcpp::traits::input_parameter< int >::type maxStep(maxStepSEXP);
+    Rcpp::traits::input_parameter< unsigned int >::type maxStep(maxStepSEXP);
+    Rcpp::traits::input_parameter< unsigned int >::type seed(seedSEXP);
+    Rcpp::traits::input_parameter< bool >::type flip(flipSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(hc(Y, nodeType, whiteList, blackList, tol, maxStep, verbose));
+    rcpp_result_gen = Rcpp::wrap(hc1(Y, nodeType, whiteList, blackList, tol, maxStep, seed, flip, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
-// rcpp_hello_world
-List rcpp_hello_world();
-RcppExport SEXP _dagbagM_rcpp_hello_world() {
+// hc_
+Rcpp::List hc_(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeType, const Rcpp::LogicalMatrix& whiteList, const Rcpp::LogicalMatrix& blackList, double tol, unsigned int maxStep, unsigned int restart, unsigned int seed, bool verbose);
+RcppExport SEXP _dagbagM_hc_(SEXP YSEXP, SEXP nodeTypeSEXP, SEXP whiteListSEXP, SEXP blackListSEXP, SEXP tolSEXP, SEXP maxStepSEXP, SEXP restartSEXP, SEXP seedSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(rcpp_hello_world());
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::CharacterVector& >::type nodeType(nodeTypeSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::LogicalMatrix& >::type whiteList(whiteListSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::LogicalMatrix& >::type blackList(blackListSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< unsigned int >::type maxStep(maxStepSEXP);
+    Rcpp::traits::input_parameter< unsigned int >::type restart(restartSEXP);
+    Rcpp::traits::input_parameter< unsigned int >::type seed(seedSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(hc_(Y, nodeType, whiteList, blackList, tol, maxStep, restart, seed, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
 
+
+
 static const R_CallMethodDef CallEntries[] = {
-    {"_dagbagM_hc", (DL_FUNC) &_dagbagM_hc, 7},
-    {"_dagbagM_rcpp_hello_world", (DL_FUNC) &_dagbagM_rcpp_hello_world, 0},
+    {"_dagbagM_hc1", (DL_FUNC) &_dagbagM_hc1, 9},
+    {"_dagbagM_hc_", (DL_FUNC) &_dagbagM_hc_, 9},
     {NULL, NULL, 0}
 };
 

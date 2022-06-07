@@ -26,97 +26,153 @@ typedef Eigen::Map<Eigen::MatrixXd> MapMat; //Eigen templated class map: to have
 typedef Eigen::Map<Eigen::VectorXd> MapVec;
 
 
-//check whether an edge is on a loop  in a graph; note: this function can also check whether adding a new edge to the graph will result in a loop/cycle.
-
+//check whether an edge is on a loop  in a graph; note: this function can also check whether adding a new edge to the graph will result in a loop/cycle. (loop version)
 bool edgeOnLoop(int fromNode, int toNode, const Rcpp::List& parSet){
   //inputs: fromNode: index of the parent node in the edge under testing; toNode: index of the child node in the edge under testing
   //parSet: list of parent nodes for each node in the graph 
   //output: true: if the edge is on a loop; false: if the edge is not on a loop 
+
+  unsigned int p = parSet.size(); //total number of nodes of the graph
+  Rcpp::LogicalVector onPath(p, false); //ith element indicates whether node i is added to path 
+  Rcpp::IntegerVector path(p,-1); // record indices of nodes on the path by order of addition 
   
-  std::vector<int> curPar=parSet[fromNode]; 
- 
-  if(curPar.size()==0){//base condition: 
+  path[0]=fromNode; // start path at the fromNode, trace back to its ancesters until find toNode (return true) or exhaust the path without finding toNode (return false)
+  onPath[fromNode] = true;
+
+  int curPos=0; // current position under examination on path
+  int lastPos=0; //last position on path 
+
+  while(true){
+   if(curPos>lastPos){//exhaust the path without finding the toNode: no cycle   
     return false; 
-  }else{
-  std::vector<int>::iterator it=std::find(curPar.begin(), curPar.end(), toNode); 
-    if(it!=curPar.end()){ //base condition: toNode in parent set of fromNode, return true 
-      return true;
     }else{
-      for (unsigned int i=0; i<curPar.size(); i++){
-        if(edgeOnLoop(curPar[i], toNode, parSet)) return true; 
-      }
-    }
-  }
+     int curNode=path[curPos]; 
+
+     if(curNode==toNode){//find cycle:  
+      return true;
+     }else{
+     std::vector<int> curPar=parSet[curNode]; 
+
+     int q=curPar.size();
+     if(q>0){//examine parents of curNode
+       for(int i=0;i<q; i++){
+         int j = curPar[i];  //index of ith parent of curNode 
+         if(!onPath[j]){//if ith parent (node j) is not on path yet 
+          onPath[j] = true; 
+          path[++lastPos]=j; //increase lastPos by 1 and then add node j to the path at lastPos  
+         } //end if onPath
+       } //end for curPar
+      }//end if curPar.size()>0
+      curPos++;
+     }//end if
+    }//end if
+
+  }//end while
 
   return false; 
 }
 
 
 
+
+//get ancester indicators for a given node (loop  version)
 Rcpp::LogicalVector ancester(int i, const Rcpp::List& parSet){
 //input: i -- index of the node under interest; parSet: list of parents set of the graph; 
 //output: a logical vector indicating whether each node is node i's ancester or not
 //note: (i) node i itself is included in its ancester set; (i) the graph must be acyclic, otherwise lead to infinite loop
 
   int p=parSet.size();
-  Rcpp::LogicalVector output(p, false);
-  output[i]=true; //include the node in its ancestor set 
-  std::vector<int> curPar=parSet[i];
+  Rcpp::LogicalVector output(p, false); //jth element indicates whether it is node i's ancester 
+  Rcpp::IntegerVector path(p, -1);  //search path 
+  output[i]=true; //include node i in its ancestor set 
+  path[0]=i; //start search at node i, trace back to node i's ancesters 
+ 
+  int curPos=0; //current position on path
+  int lastPos=0; //the last(end) position on path 
 
-  if(curPar.size()==0){//base condition:
-    return output; //no ancester
-  }else{
-    for(unsigned int k=0; k<curPar.size(); k++){
-    int j=curPar[k];
-    output[j]=true; //add kth parent into the ancester set of node i
-    output=output|ancester(j, parSet);    //add kth parent's ancesters to the ancester set of node i
-    }
-  }
+  while(true){
+   if(curPos>lastPos){//exhaust the search path,  return result
+     return output;
+   }else{
+     int curNode=path[curPos]; //current node on path
+     std::vector<int> curPar=parSet[curNode]; //current parent set
+     int q = curPar.size();
+     if(q>0){
+      for(int k=0;k<q;k++){//kth parent (node j) of current node
+        int j = curPar[k]; 
+        if(!output[j]){//if node j is not included in the ancester set yet
+         output[j] = true; //include node j in the ancester set
+         path[++lastPos]=j; //include node j on path  
+        }
+      }//end for 
+     }//end if q>0
+     curPos++; 
+   }
+  }//end while 
 
    return output;
 }
 
 
-
+//get descedant indicators for a given node (loop version)
 Rcpp::LogicalVector descend(int i, const Rcpp::List& chdSet){
 //input: i -- index of the node under interest; chdSet: list of children set of the graph; note: the graph must be acyclic, otherwise lead to infinite loop
 //output: a logical vector indicating whether each node is node i's descendant or not
 //note: (i) node i itself is included in its descendant set; (i) the graph must be acyclic, otherwise lead to infinite loop
-
+  
   int p=chdSet.size();
-  Rcpp::LogicalVector output(p, false);
-  output[i]=true; //include the node in its descendant set
-  std::vector<int> curChd=chdSet[i];
+  Rcpp::LogicalVector output(p, false); //jth element indicates whether it is node i's descendant 
+  Rcpp::IntegerVector path(p, -1);  //search path 
+  output[i]=true; //include node i in its descendant set 
+  path[0]=i; //start search at node i, trace down to node i's descendants 
+ 
+  int curPos=0; //current position on path
+  int lastPos=0; //the last(end) position on path 
 
-  if(curChd.size()==0){//base condition:
-    return output; //no descendant
-  }else{
-    for(unsigned int k=0; k<curChd.size(); k++){
-    int j=curChd[k];
-    output[j]=true; //add kth child into the descendant set of node i
-    output=output|descend(j, chdSet);    //add kth child's descendants to the descendant set of node i
-    }
-  }
-
+  while(true){
+   if(curPos>lastPos){//exhaust the search path,  return result
+     return output;
+   }else{
+     int curNode=path[curPos]; //current node on path
+     std::vector<int> curChd=chdSet[curNode]; //current chidren set
+     int q = curChd.size();
+     if(q>0){
+      for(int k=0;k<q;k++){//kth child (node j) of current node
+        int j = curChd[k]; 
+        if(!output[j]){//if node j is not included in the descendant set yet
+         output[j] = true; //include node j in the descandant set
+         path[++lastPos]=j; //include node j on path  
+        }
+      }//end for 
+     }//end if q>0
+     curPos++; 
+   }
+  }//end while 
+  
    return output;
 }
+
 
 
 
 bool acyclicCheck(int fromNode, int toNode, Rcpp::List parSet, Rcpp::String operType){
   //check where an operation maintains acyclicity 
   //output: true -- acyclic; false -- cycle
-  
   if(operType=="add"){
     return !edgeOnLoop(fromNode, toNode, parSet);
   }else if(operType=="reverse"){
     //remove edge fromNote -> toNode
     std::vector<int> parTo=parSet[toNode]; 
-    std::vector<int>::iterator it=std::find(parTo.begin(), parTo.end(), fromNode); //find position of fromNode
-    if(it!=parTo.end()){// if edge fromNote -> toNode exists, then remove it 
-      parTo.erase(it); //erase fromNode from toNode parent set 
-      parSet[toNode]=parTo; //update parent set 
-      return !edgeOnLoop(toNode, fromNode, parSet); // check adding toNode->fromNode
+    std::vector<int>::iterator it=std::find(parTo.begin(), parTo.end(), fromNode); //find position of fromNode//////////////////////////////////////////////////
+    if(it!=parTo.end()){// if edge fromNote -> toNode exists, then temporarily remove it, check whether adding toNode->fromNode create cycle, then retore the edge 
+      parTo.erase(it); //temporarily erase fromNode from toNode parent set 
+      parSet[toNode]=parTo; //temporarily update parent set 
+      bool output=!edgeOnLoop(toNode, fromNode, parSet); // check adding toNode->fromNode
+
+      parTo.push_back(fromNode); //restore parSet
+      parSet[toNode]=parTo;  
+      
+      return output;
     }else{
       Rcpp::Rcout<<"edge does not exist! can not be reversed!";
       return false;
@@ -131,7 +187,7 @@ bool acyclicCheck(int fromNode, int toNode, Rcpp::List parSet, Rcpp::String oper
 
 
 void acyclicUpdate(const Rcpp::IntegerVector lastOper, const Rcpp::LogicalVector& fromAn, const Rcpp::LogicalVector& fromDe, const Rcpp::LogicalVector& toAn, const Rcpp::LogicalVector& toDe, 
-  const Rcpp::IntegerVector oper, const Rcpp::List& parSet, Rcpp::LogicalMatrix& acyStatus){
+  const Rcpp::IntegerVector oper, Rcpp::List& parSet, Rcpp::LogicalMatrix& acyStatus){
 //input: lastoper: 3 x 1 integer vector of last selected operation; fromAn (toAn), fromDe(toDe): px1 logical vectors of ancester and descendant information of the from(to) node of the last selected operation 
 //oper: 3x1 integer vector of operation under consideration; parSet: parent sets of current graph; acyStatus: acyclic status to be updated  
 //output: none
@@ -255,7 +311,7 @@ Rcpp::NumericMatrix matColSelAddOne(const Rcpp::NumericMatrix& x, std::vector<in
   int counter =0; 
   
   if(ncol>0){
-    for (int i=0; i<ncol; i++){
+    for (int i=0; i<ncol; i++){////////////////////////////////////////////////////////////////////////////////////////
       for (int j=0; j<nrow; j++){
         output[counter++]=x[j+idx[i]*nrow];
       }
@@ -292,7 +348,7 @@ Rcpp::NumericMatrix delCol(const Rcpp::NumericMatrix& x, int e){//use loop: this
 
 
 //add a column before the first column of a matrix  
-Rcpp::NumericMatrix addCol(const Rcpp::NumericMatrix& x, Rcpp::NumericVector v){
+Rcpp::NumericMatrix addCol(const Rcpp::NumericMatrix& x, const Rcpp::NumericVector& v){
   //input: x: a matrix; v: a vector 
   //output: (v, x)
   
@@ -474,12 +530,12 @@ void updateGraph(const Rcpp::IntegerVector curOper, const Rcpp::NumericVector sc
     if(curOper[2]==2){//selected operation is deletion of j->i
       curGraph(j,i)=false; //delete j->i from current graph
       std::vector<int> par_i=curPar[i];
-      std::vector<int>::iterator it=std::find(par_i.begin(), par_i.end(), j); //find position of node j in node i parent set
+      std::vector<int>::iterator it=std::find(par_i.begin(), par_i.end(), j); //find position of node j in node i parent set//////////////////////////////////////////////
       par_i.erase(it); 
       curPar[i]=par_i; //delete node j from node i parent set 
 
       std::vector<int> chd_j=curChd[j];
-      std::vector<int>::iterator  it2=std::find(chd_j.begin(), chd_j.end(),i);
+      std::vector<int>::iterator  it2=std::find(chd_j.begin(), chd_j.end(),i);//////////////////////////////////////////////////////////////////////////////
       chd_j.erase(it2);
       curChd[j]=chd_j; //delete node i from node j children set  
 
@@ -490,12 +546,12 @@ void updateGraph(const Rcpp::IntegerVector curOper, const Rcpp::NumericVector sc
       //first delete j->i:
       curGraph(j,i)=false; //delete j->i from current graph
       std::vector<int> par_i=curPar[i];
-      std::vector<int>::iterator it=std::find(par_i.begin(), par_i.end(), j); //find position of node j in node i parent set
+      std::vector<int>::iterator it=std::find(par_i.begin(), par_i.end(), j); //find position of node j in node i parent set////////////////////////////////////////
       par_i.erase(it); 
       curPar[i]=par_i; //delete node j to node i parent set 
       
       std::vector<int> chd_j=curChd[j];
-      std::vector<int>::iterator  it2=std::find(chd_j.begin(), chd_j.end(),i);
+      std::vector<int>::iterator  it2=std::find(chd_j.begin(), chd_j.end(),i);/////////////////////////////////////////////////////////////////////////
       chd_j.erase(it2);
       curChd[j]=chd_j; //delete node i from node j children set  
 
@@ -516,16 +572,36 @@ void updateGraph(const Rcpp::IntegerVector curOper, const Rcpp::NumericVector sc
 
 }
 
+//comapre current score change (delta_c) with current deltaMin:
+//if delta_c<deltaMin-tol, return true: (and subsequently update current best operation and its relates score, as well as deltaMin)
+//if flip&&|delta_c-deltaMin|<=tol, then return true with 50% probability;
+//if delta_c>deltaMin+tol: return false (no subsequent update of current best operation);  
+bool deltaComp(double delta_c, double deltaMin, double tol, bool flip = true){
+ if(delta_c<deltaMin-tol){
+  return true;
+ }else if(delta_c>deltaMin+tol){
+  return false;
+ }else{
+   if(flip&&(rand()+0.0)/(RAND_MAX+1.0)>0.5)
+    return true;
+ }
 
-//main function
+  return false; 
+}
+
+//main function: hc_
+//run hc once
 //[[Rcpp::export]]
-Rcpp::List hc(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeType,const Rcpp::LogicalMatrix&  whiteList,
-                       const Rcpp::LogicalMatrix&  blackList, double tol=1e-6, int maxStep=500, bool verbose=false){
+Rcpp::List hc1(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeType,const Rcpp::LogicalMatrix&  whiteList,
+                       const Rcpp::LogicalMatrix&  blackList, double tol=1e-6, unsigned int maxStep=500, unsigned int seed=1, bool flip=true, bool verbose=false){
   //inputs: Y: n by p data matrix;
   //whiteList: p by p whitelist: edges always includes ; blackList: p x p blacklist: edges excluded;
-  //tol: tolerance for score imporvement: stop search when score improvement is less than tol; maxStep: maximum search steps; verbose: whether print out intermediate results 
+  //tol: tolerance for score imporvement: stop search when score improvement is less than tol; maxStep: maximum search steps; 
+  //seed: seed for random number generator srand(); verbose: whether print out intermediate results;
+  //flip: whether (TRUE) or not (FALSE) flip a coin to break ties in score improvement; 
   //output: a list of: adjacency matrix of the final graph, scores of the final graph, selected operation in each step, best score improvement in each step
 
+  srand(seed); // set random number generator seed: used to break score ties in detalComp(); 
   int p=Y.ncol();
   Rcpp::List stepOper; // a list of selected operation at each step
   Rcpp::List stepDelta; // a list of best score improvement at each step
@@ -563,7 +639,7 @@ Rcpp::List hc(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeTyp
   Rcpp::LogicalVector fromAn(p, false), fromDe(p, false), toAn(p,false), toDe(p, false); //ancester and descendant indicators for the from and to nodes of the last selected operation
  
 
-  double deltaMin=(-tol); //best score improvement (decrease) at each step: reset to -tol at each step
+  double deltaMin=0.0; //best score improvement (decrease) at each step: reset to -tol at each step
   Rcpp::NumericVector scoreMin(2); //if selected operation is add/delete j->i, then score[0] is the updated score of node i; if the selected operation is reverse j->i, then score[0] is the updates score of node i and score[1] is the updated score of node j 
   
   double score_c;//score of current operation if deletion or addition
@@ -571,7 +647,7 @@ Rcpp::List hc(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeTyp
   double delta_c;//score change of current operation
 
   ////updating steps:
-  int stepCounter=1; //step counter 
+  unsigned int stepCounter=1; //step counter 
   while(stepCounter<=maxStep){
     for (int i=0;i<p;i++){//consider operations invovling node i
        
@@ -607,7 +683,7 @@ Rcpp::List hc(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeTyp
                Rcpp::Rcout <<"\n step count:"<<stepCounter <<": delete edge "<< j<<"->"<<i<< ": delta="<<delta_c<<"\n";
                }
 
-                if(delta_c<deltaMin){//if score change improved over the current best improvement, upadte curOper and deltaMin, scoreMin 
+                if(deltaComp(delta_c, deltaMin, tol,flip)){//if score change improved over the current best improvement, upadte curOper and deltaMin, scoreMin 
                   curOper[0]=j;//from node
                   curOper[1]=i;//to node
                   curOper[2]=2; //delete j->i improves score beyond the current best improvement  
@@ -645,7 +721,7 @@ Rcpp::List hc(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeTyp
                    Rcpp::Rcout <<"\n step count:"<<stepCounter <<": reverse edge "<< j<<"->"<<i<< ": delta="<<delta_c<<"\n";
                    }
 
-                    if(delta_c<deltaMin){//if score change improved over the current best improvement, upadte curOper and deltaMin, scoreMin 
+                    if(deltaComp(delta_c, deltaMin, tol, flip)){//if score change improved over the current best improvement, upadte curOper and deltaMin, scoreMin 
                       curOper[0]=j;//from node
                       curOper[1]=i;//to node
                       curOper[2]=3; //reverse j->i improves score beyond the current best improvement  
@@ -665,16 +741,16 @@ Rcpp::List hc(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeTyp
       
     //addition operations: to node i parent set
      for (int j=0; j<p; j++){
-       if(!curGraph(j,i)&&!curGraph(i,j)&&!blackList(j,i)){// if j->i  and i->j not in current graph and not in blacklist: consider addition of j->i
-       
+       if(!curGraph(j,i)&&!curGraph(i,j)&&!blackList(j,i)){// if j->i  and i->j not in current graph and not in blacklist: consider addition of j->i     
         acyclicUpdate(lastOper, fromAn, fromDe, toAn, toDe, Rcpp::IntegerVector::create(j,i,1), curPar, acyStatus);//check/update acyclic status
-
+    
          if(acyStatus(j,i)){ 
          
            if(lastOper[2]==-1||last_to_i||(lastOper[2]==3&&last_from_i)){//if node i is involved in the last selected operation or no last operation: need to recalculate its score 
             Rcpp::NumericVector Y_j=Y(Rcpp::_,j);//node j vector  
             Rcpp::NumericMatrix X_c=addCol(X_i,Y_j);//node i parent matrix after adding j->i
             score_c=bicScore(X_c, Y_i, nodeType[i]);//node i score after adding j->i
+        
             delta_c=score_c-curScore[i];//score change due to adding j->i
             delta(j,i)=delta_c;//record score change due to adding j->i
             }else{//no need to recalcuate node i score: use calculation from last step
@@ -685,39 +761,46 @@ Rcpp::List hc(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeTyp
             if(verbose){
             Rcpp::Rcout <<"\n step count:"<<stepCounter <<": add edge "<< j<<"->"<<i<< ": delta="<<delta_c<<"\n";
             }
-              
-            if(delta_c<deltaMin){//if score change improved over the current best improvement, upadte curOper and deltaMin, scoreMin 
+             
+           
+            if(deltaComp(delta_c, deltaMin, tol, flip)){//if score change improved over the current best improvement, upadte curOper and deltaMin, scoreMin 
               curOper[0]=j;//from node
               curOper[1]=i;//to node
               curOper[2]=1; //add j->i improves score beyond the current best improvement  
               deltaMin=delta_c;
               scoreMin[0]=score_c; //score of node i after adding j->i
             }
-
+            
           }//end of if ayclic 
         }//end of if  curGraph&&blacklist for addition
       }// end of j-loop       
     }// end of i-loop  
       
 //update curGraph/curPar/curScore and continue searching if there is sufficient improvement; otherwise, breakout the while loop
-    if(deltaMin<(-tol)){
-      //update curGraph, curPar, curChd, curScore based on the selected operation (curOper)
-      updateGraph(curOper, scoreMin, curGraph, curPar, curChd, curScore);
 
+    if(deltaMin<(-tol)){
+      //update curGraph, curPar, curChd, curScore based on the selected operation (curOper) 
+      updateGraph(curOper, scoreMin, curGraph, curPar, curChd, curScore);
+     
       //update lastOper, fromAn, fromDe, toAn, toDe based on the updated graph 
       lastOper=Rcpp::clone(curOper); 
-      fromAn=ancester(lastOper[0], curPar);
-      fromDe=descend(lastOper[0], curChd);
-      toAn=ancester(lastOper[1], curPar);
-      toDe=descend(lastOper[1], curChd);
+     
+      if(verbose){
+      Rcpp::Rcout <<"\n step count:"<<stepCounter<<": lastOper"<<lastOper[0]<<lastOper[1]<<lastOper[2]<<"\n";   
+      }
 
+      fromAn=ancester(lastOper[0], curPar);
+      toAn=ancester(lastOper[1], curPar);
+      fromDe=descend(lastOper[0], curChd);
+      toDe=descend(lastOper[1], curChd);
+      
       //update  stepOper and stepCounter
       stepOper.push_back(lastOper);
       stepDelta.push_back(deltaMin);
       stepCounter++;   
 
       //reset deltaMin to the tolerance 
-      deltaMin=(-tol);
+      deltaMin=0.0;
      
       }else{//stop searching when there is no sufficient improvement 
 
@@ -727,8 +810,31 @@ Rcpp::List hc(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeTyp
   }//end while stepCounter  
 
 ////
+  //Rcpp::Rcout<<"# of steps run: "<< stepCounter-1 <<"\n";  
   return Rcpp::List::create(Rcpp::Named("adjacency")=curGraph, Rcpp::Named("score")=curScore, Rcpp::Named("operations")=stepOper, Rcpp::Named("deltaMin")=stepDelta);
 }
 
+//run hc restart times with different seeds and return the model with the best (smallest) score
+//[[Rcpp::export]]
+Rcpp::List hc_(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeType,const Rcpp::LogicalMatrix&  whiteList,
+                       const Rcpp::LogicalMatrix&  blackList, double tol=1e-6, unsigned int maxStep=500,  unsigned int restart=10, unsigned int seed=1, bool verbose=false){
+
+  Rcpp::List res;
+  double scoreMin=R_PosInf;  
+  bool flip = restart>1; //when there is only one run, no need to randomize ties; this saves a  bit time when there're many ties 
+
+  for (unsigned int i=0; i<restart; i++){
+   Rcpp::List curRes=hc1(Y, nodeType, whiteList, blackList, tol, maxStep, i*101+seed, flip, verbose);
+   Rcpp::NumericVector curScoreV=curRes["score"];
+   double curScore=Rcpp::sum(curScoreV);
+   //Rcpp::Rcout<<"restart iteration "<<i+1<< ": score= "<<curScore<<"\n";
+   if(curScore<scoreMin){
+    res=curRes;
+    scoreMin=curScore;
+   }
+  }
+  
+  return res;
+} 
 
 #pragma GCC diagnostic pop
