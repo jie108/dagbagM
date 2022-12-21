@@ -162,7 +162,11 @@ temp.bag=dagbag::score_shd(boot.adj, alpha = 1, threshold=0)
 adj.bag=temp.bag$adj.matrix
 
 ```
+## Citing DAGBagM
 
+If you use DAGBagM in your research please consider citing us:
+
+Chowdhury, S., Wang, R., Yu, Q. et al. DAGBagM: learning directed acyclic graphs of mixed variables with an application to identify protein biomarkers for treatment response in ovarian cancer. BMC Bioinformatics 23, 321 (2022). [https://doi.org/10.1186/s12859-022-04864-y].
 
 ## Contributions
 
