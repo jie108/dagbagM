@@ -138,18 +138,19 @@ a list of three components
   
 ## Examples
 ```
-(i) DAG learning by hill climbing for mixture of continuous and binary nodes: no bootstrap resample
+(i) DAG learning by hill climbing: no bootstrap resample
 
 data(example)
-Y.n=example$Y # data matrix 
+Y.n=example$Y # data matrix
+p<- dim(Y.n)[2] # no. of nodes
 true.dir=example$true.dir  #adjacency matrix of the data generating DAG
 true.ske=example$true.ske  # skeleton graph of the data generating DAG
 
-temp<- dagbagM::hc(Y=Y.n,nodeType=c(rep("c",p), "b), whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=10, seed = 1,  verbose = FALSE)
+temp<- dagbagM::hc(Y=Y.n,nodeType=rep("c",p), whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=10, seed = 1,  verbose = FALSE)
 
-(ii) DAG learning by hill climbing for mixture of continuous and binary nodes: for bootstrap resamples
+(ii) DAG learning by hill climbing: for bootstrap resamples
 
-temp.boot<- dagbagM::hc_boot_parallel(Y=Y.n, n.boot=10, nodeType=c(rep("c",p),"b), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=10, seed = 1,  nodeShuffle=TRUE, numThread = 2,verbose = FALSE)
+temp.boot<- dagbagM::hc_boot_parallel(Y=Y.n, n.boot=10, nodeType=rep("c",p), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=10, seed = 1,  nodeShuffle=TRUE, numThread = 2,verbose = FALSE)
 
 boot.adj=temp.boot$adjacency
 
