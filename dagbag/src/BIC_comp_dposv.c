@@ -1128,8 +1128,11 @@ void bic_cal(int *x_nrow, int *x_ncol, int *Npar, double *X,double *y, int *Tsco
 
 	int c2=1;       //number of column of Ay/
 
-
-	F77_CALL(dposv)("U", &ncol, &c2, AAT, &ncol, Ay, &ncol, &ok);  /// Ay is replace by (X'X)^{-1}X'y, and &1 is wrong
+#ifdef __APPLE__
+dposv("U", &ncol, &c2, AAT, &ncol, Ay, &ncol, &ok); 
+#else
+F77_CALL(dposv)("U", &ncol, &c2, AAT, &ncol, Ay, &ncol, &ok);  /// Ay is replace by (X'X)^{-1}X'y, and &1 is wrong
+#endif	
 	*info=ok;
 
 	if(ok==0){

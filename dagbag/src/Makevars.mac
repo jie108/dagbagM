@@ -1,0 +1,2 @@
+PKG_LIBS=-L/System/Library/Frameworks/Accelerate.framework/Frameworks/vecLib.framework -lLAPACK
+
