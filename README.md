@@ -33,7 +33,7 @@ contains the R scripts for replicating the simulation results in the manuscript.
 ### Install dagbagM
 ```
 require(doParallel)
-
+library(devtools)
 install_github("jie108/dagbagM/dagbagM")
 ```
 
@@ -128,7 +128,7 @@ a matrix
 ## Examples
 ```
 (i) DAG learning by hill climbing: no bootstrap resample
-
+library(dagbagM)
 data(example)
 Y.n=example$Y # data matrix
 p<- dim(Y.n)[2] # no. of nodes
