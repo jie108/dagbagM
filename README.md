@@ -89,7 +89,7 @@ score_shd(boot.adj, alpha, threshold, max.step, blacklist, whitelist, verbose)
 | max.step		           | NULL             |This is a legacy parameter and it does not have any effect 
 | blacklist	         | NULL             | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
 | whitelist          | NULL           |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
-| print		     |     FALSE     | logical: whether print the step information
+| verbose		     |     FALSE     | logical: whether print the step information
 
 
 
