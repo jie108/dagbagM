@@ -37,11 +37,6 @@ require(doParallel)
 install_github("jie108/dagbagM/dagbagM")
 ```
 
-### Install dagbag
-```
-install_github("jie108/dagbagM/dagbag")
-```
-
 
 ## Usage
 
@@ -58,9 +53,6 @@ hc_boot_parallel: A function to learn a DAG model for every bootstrap resmples o
 dagbagM::hc_boot_parallel(Y, node.type, n.boot, whiteList, blackList, maxStep, standardize, tol, restart, seed, nodeShuffle, numThread, verbose)
 ```
 
-
-```
-dagbag
 
 score_shd: A function to use structural hamming distance to aggregate DAGs. It aggregates an ensemble of DAGs to obtain a DAG that minimizes the overall distance to the ensemble.
 
@@ -89,14 +81,14 @@ score_shd(boot.adj, alpha, threshold, max.step, blacklist, whitelist, print)
 
 
 
-### Arguments for dagbag::score_shd
+### Arguments for dagbagM::score_shd
   
 | Parameter                 | Default       | Description   |	
 | :------------------------ |:-------------:| :-------------|
 | boot.adj	       |	           | A p by p by B array, where B is the number of DAGs to be aggregated. It records the adjacency matrices. It may be the output of the "score" function.
 | alpha         | 1          |a positive scalar: alpha defines which member of the gSHD family should be used to aggregate the DAGs. In general, the larger the alpha, the more aggressive of the aggregation, in that less edges are retained leading to smaller FDR and less power
 | threshold 	       |	0	     |a scalar: it defines the frequency cut-off value, "0" corresponds to cut-off 0.5
-| max.step		           | 500             |an integer: the maximum number of search steps 
+| max.step		           | NULL             |This is a legacy parameter and it does not have any effect 
 | blacklist	         | NULL             | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
 | whitelist          | NULL           |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
 | print		     |     FALSE     | logical: whether print the step information
@@ -125,15 +117,14 @@ a list of three components
 | adjacency	  | adjacency matrix of the learned DAG
 
 
-### Value for dagbag::score_shd
+### Value for dagbagM::score_shd
 
-a list of three components
+a matrix 
 
 | Object       | Description   |
 | :------------------------ | :-------------|
 | adj.matrix	  | adjacency matrix of the learned DAG
-| final.step    | a number recording how many search steps are conducted before the procedure stops
-| movement	    | a matrix recording the selected operation, addition, deletion or reversal of an edge, at each search step
+
 
   
 ## Examples
@@ -162,8 +153,7 @@ boot.adj=temp.boot$adjacency
 
 set.seed(1)
 
-temp.bag=dagbag::score_shd(boot.adj, alpha = 1, threshold=0) 
-adj.bag=temp.bag$adj.matrix
+adj.bag=dagbagM::score_shd(boot.adj, alpha = 1, threshold=0) 
 
 ```
 ## Citing DAGBagM
