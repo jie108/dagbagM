@@ -1,14 +1,11 @@
 Package: dagbagM
 Type: Package
-Title: What the Package Does in One 'Title
-     Case' Line
-Version: 1.0
-Date: 2020-07-19
+Title: dagbagM
+Version: 2.0
+Date: 2025-02-17
 Author: Jie Peng
 Maintainer: Jie Peng <jiepeng@ucdavis.edu>
-Description: One paragraph description of
-     what the package does as one or more
-     full sentences.
+Description: This package is for learning directed acycic graphs for mixture of continuous and binary variables.
 License: GPL (>= 2)
 Imports: Rcpp (>= 1.0.4)
-LinkingTo: Rcpp,RcppEigen, RcppNumerical, doParallel, foreach
+LinkingTo: Rcpp,RcppEigen, RcppNumerical, doParallel, foreach, igraph
