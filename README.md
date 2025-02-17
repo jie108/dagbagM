@@ -140,8 +140,8 @@ temp<- dagbagM::hc(Y=Y.n,nodeType=rep("c",p), whiteList=NULL, blackList=NULL, to
 
 library(foreach)
 library(doParallel)
-set.seed(1)
 
+set.seed(1)
 temp.boot<- dagbagM::hc_boot_parallel(Y=Y.n, n.boot=10, nodeType=rep("c",p), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=10, seed = 1,  nodeShuffle=TRUE, numThread = 2,verbose = FALSE)
 boot.adj=temp.boot$adjacency
 
