@@ -107,11 +107,11 @@ a list of three components
 
 ### Value for dagbagM::hc_boot_parallel
 
-a list of three components
+an array
 
 | Object       | Description   |
 | :------------------------ | :-------------|
-| adjacency	  | adjacency matrix of the learned DAG
+| adjacency	  | an array of adjacency matrices of the learned DAGs
 
 
 ### Value for dagbagM::score_shd
@@ -142,8 +142,8 @@ library(foreach)
 library(doParallel)
 
 set.seed(1)
-temp.boot<- dagbagM::hc_boot_parallel(Y=Y.n, n.boot=10, nodeType=rep("c",p), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=10, seed = 1,  nodeShuffle=TRUE, numThread = 2,verbose = FALSE)
-boot.adj=temp.boot$adjacency
+boot.adj<- dagbagM::hc_boot_parallel(Y=Y.n, n.boot=10, nodeType=rep("c",p), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=10, seed = 1,  nodeShuffle=TRUE, numThread = 2,verbose = FALSE)
+
 
 (iii) Bootstrap aggregation of DAGs learnt from bootstrap resamples
 
