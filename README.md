@@ -135,6 +135,7 @@ true.dir=example$true.dir  #adjacency matrix of the data generating DAG
 true.ske=example$true.ske  # skeleton graph of the data generating DAG
 
 temp<- dagbagM::hc(Y=Y.n,nodeType=rep("c",p), whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=10, seed = 1,  verbose = FALSE)
+adj.temp=temp$adjacency
 
 (ii) DAG learning by hill climbing: for bootstrap resamples
 
