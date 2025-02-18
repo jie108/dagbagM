@@ -19,9 +19,6 @@ This repository contains 3 folders.
 dagbagM: 
 contains the R package "dagbagM" for learning directed acycic graphs for mixture of continuous and binary variables
 
-dagbag: 
-contains the R package "dagbag". The function dagbag::score_shd() is used for aggregating the DAGs learnt from bootstrap resamples
-
 Simulation_scripts: 
 contains the R scripts for replicating the simulation results in the manuscript.
 ```
@@ -33,7 +30,7 @@ contains the R scripts for replicating the simulation results in the manuscript.
 ### Install dagbagM
 ```
 library(devtools)
-install_github("jie108/dagbagM/dagbagM")
+install_github("jie108/dagbagM")
 ```
 
 
