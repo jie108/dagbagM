@@ -30,7 +30,7 @@ contains the R scripts for replicating the simulation results in the manuscript.
 ### Install dagbagM
 ```
 library(devtools)
-install_github("jie108/dagbagM")
+install_github("jie108/dagbagM",subdir="dagbagM")
 ```
 
 
