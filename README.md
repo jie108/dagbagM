@@ -145,7 +145,11 @@ boot.adj<- dagbagM::hc_boot_parallel(Y=Y.n, n.boot=10, nodeType=rep("c",p), whit
 
 (iii) Bootstrap aggregation of DAGs learnt from bootstrap resamples
 
-adj.bag=dagbagM::score_shd(boot.adj, alpha = 1, threshold=0) 
+adj.bag=dagbagM::score_shd(boot.adj, alpha = 1, threshold=0)
+
+sum(adj.bag==1&true.dir==0)/sum(adj.bag==1) ## FDR
+sum(adj.bag==1&true.dir==1)/sum(true.dir==1) ## Power
+
 
 ```
 ## Citing DAGBagM
