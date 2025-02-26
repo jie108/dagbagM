@@ -14,7 +14,7 @@
 
 ## Overview
 ```
-This repository contains 3 folders. 
+This repository contains two folders. 
 
 dagbagM: 
 contains the R package "dagbagM" for learning directed acycic graphs for mixture of continuous and binary variables
