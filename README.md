@@ -63,11 +63,11 @@ score_shd(boot.adj, alpha, threshold, max.step, blacklist, whitelist, verbose)
 | Y	       |	           | an n by p data matrix: n – sample size, p – number of variables
 | n.boot (only for hc_boot_parallel) |      1       | an integer: the number of bootstrap resamples of the data matrix Y
 | node.type  		       |  NULL       | a vector of length equal to the number of variables specifying the type of variable/node type: "c" for continuous and "b" for binary
-| blacklist	         | NULL    | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
 | whitelist          | NULL   |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
+| blacklist	         | NULL    | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
 | standardize |  TRUE | logical: whether to standardize the data to have mean zero and sd one
-| maxStep		           | 2000    |an integer: the maximum number of search steps of the hill climbing algorithm
 | tol     |     1e-06     | a scalar: a number to indicate a threshold below which values will be treated as zero
+| maxStep		           | 2000    |an integer: the maximum number of search steps of the hill climbing algorithm
 | restart | 10 | an integer: number of times to restart the search algorithm after a local optimal is achieved. The purpose is to search for global optimal
 |seed| 1 | an integer: seed used for bootstrap restart and bootstrap resampling
 |nodeShuffle (only for hc_boot_parallel) | TRUE | logical: whether to shuffle the order of the variables before DAG learning
