@@ -50,7 +50,7 @@ dagbagM::hc_boot_parallel(Y, node.type, n.boot, whiteList, blackList, maxStep, s
 
 score_shd: A function to use structural hamming distance to aggregate DAGs. It aggregates an ensemble of DAGs to obtain a DAG that minimizes the overall distance to the ensemble.
 
-score_shd(boot.adj, alpha, threshold, max.step, blacklist, whitelist, verbose)
+score_shd(boot.adj, alpha, threshold,  whitelist,  blacklist, max.step, verbose)
 ```
 
 
