@@ -27,7 +27,7 @@ dagbagM:
 contains the R package "dagbagM" for learning directed acycic graphs for mixture of continuous and binary variables
 
 Simulation_scripts: 
-contains the R scripts for replicating the simulation results in the manuscript.
+contains the R scripts for replicating the simulation results in the manuscript. (Notes: dagbag::score_shd is now replaced by dagbagM::score_shd. See Usage and Examples.)
 ```
 
 
