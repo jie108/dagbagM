@@ -41,19 +41,13 @@ install_github("jie108/dagbagM",subdir="dagbagM")
 ## Usage
 
 ```
-dagbagM
-
 hc: A function to learn a DAG model for the given data with no bootstrap resamples by the hill climbing algorithm for mixture of continuous and binary variables
-
 dagbagM::hc(Y,nodeType, whiteList, blackList, tol, standardize, maxStep, restart, seed,  verbose)
 
-
 hc_boot_parallel: A function to learn a DAG model for every bootstrap resmples of the given data by the hill climbing algorithm for mixture of continuous and binary variables
-
 dagbagM::hc_boot_parallel(Y, node.type, n.boot, whiteList, blackList, maxStep, standardize, tol, restart, seed, nodeShuffle, numThread, verbose)
 
 score_shd: A function to use structural hamming distance to aggregate DAGs. It aggregates an ensemble of DAGs to obtain a DAG that minimizes the overall distance to the ensemble.
-
 score_shd(boot.adj, alpha, threshold,  whitelist,  blacklist, max.step, verbose)
 ```
 
