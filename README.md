@@ -83,9 +83,9 @@ score_shd(boot.adj, alpha, threshold, max.step, blacklist, whitelist, verbose)
 | boot.adj	       |	           | A p by p by B array, where B is the number of DAGs to be aggregated. It records the adjacency matrices. It may be the output of the "hc_boot_parallel" function.
 | alpha         | 1          |a positive scalar: alpha defines which member of the gSHD family should be used to aggregate the DAGs. In general, the larger the alpha, the more aggressive of the aggregation, in that less edges are retained leading to smaller FDR and less power
 | threshold 	       |	0	     |a scalar: it defines the frequency cut-off value(=(1-threshold)/2), "0" corresponds to cut-off 0.5
-| max.step		           | NULL             |This is a legacy parameter and it does not have any effect 
-| blacklist	         | NULL             | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
 | whitelist          | NULL           |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
+| blacklist	         | NULL             | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
+| max.step		           | NULL             |This is a legacy parameter and it does not have any effect 
 | verbose		     |     FALSE     | logical: whether print the step information
 
 
