@@ -127,7 +127,7 @@ data(example)
 Y.n=example$Y # data matrix
 p<- dim(Y.n)[2] # no. of nodes
 true.dir=example$true.dir  # adjacency matrix of the data generating DAG
-true.moral=moral(true.dir) ## moral graph of the data generating DAG
+true.moral=moral_graph(true.dir) ## moral graph of the data generating DAG
 true.ske=skeleton(true.dir)  # skeleton graph of the data generating DAG
 true.vstr=vstructures(true.dir) ## vstructures of the data generating DAG
 
@@ -147,24 +147,24 @@ adj.bag=score_shd(boot.adj, alpha = 1, threshold=0)
 
 #(iv) Evaluations
 ## results on DAG estimation
-sum(adj.bag==1&true.dir==0)/sum(adj.bag==1) ## FDR
-sum(adj.bag==1&true.dir==1)/sum(true.dir==1) ## Power
+sum(adj.bag==1&true.dir==0)/sum(adj.bag==1) ## FDR: 0.4324324
+sum(adj.bag==1&true.dir==1)/sum(true.dir==1) ## Power: 0.5779817
 
 ## results on moral graph estimation
-adj.bag.moral=moral(adj.bag)
-sum(adj.bag.moral==1&true.moral==0)/sum(adj.bag.moral==1) ## FDR
-sum(adj.bag.moral==1&true.moral==1)/sum(true.moral==1) ## Power
+adj.bag.moral=moral_graph(adj.bag)
+sum(adj.bag.moral==1&true.moral==0)/sum(adj.bag.moral==1) ## FDR: 0.2215569
+sum(adj.bag.moral==1&true.moral==1)/sum(true.moral==1) ## Power: 0.7065217
 
 ## results on skeleton graph estimation
 adj.bag.ske=skeleton(adj.bag)
-sum(adj.bag.ske==1&true.ske==0)/sum(adj.bag.ske==1) ## FDR
-sum(adj.bag.ske==1&true.ske==1)/sum(true.ske==1) ## Power
+sum(adj.bag.ske==1&true.ske==0)/sum(adj.bag.ske==1) ## FDR: 0.1801802
+sum(adj.bag.ske==1&true.ske==1)/sum(true.ske==1) ## Power: 0.8348624
 
 ## results on vstructures estimation
 adj.bag.vstr=vstructures(adj.bag)
 vstr.corr=compare.vstructures(target.vstructures=adj.bag.vstr, true.vstructures=true.vstr)
-1-nrow(vstr.corr)/nrow(adj.bag.vstr) ## FDR:
-nrow(vstr.corr)/nrow(true.vstr) ## power:
+1-nrow(vstr.corr)/nrow(adj.bag.vstr) ## FDR: 0.375
+nrow(vstr.corr)/nrow(true.vstr) ## power: 0.4545455
 
 ```
 
