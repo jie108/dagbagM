@@ -122,30 +122,49 @@ a matrix
   
 ## Examples
 ```
-(i) DAG learning by hill climbing: no bootstrap resample
-
 library(dagbagM)
 data(example)
 Y.n=example$Y # data matrix
 p<- dim(Y.n)[2] # no. of nodes
-true.dir=example$true.dir  #adjacency matrix of the data generating DAG
-true.ske=example$true.ske  # skeleton graph of the data generating DAG
+true.dir=example$true.dir  # adjacency matrix of the data generating DAG
+true.moral=moral(true.dir) ## moral graph of the data generating DAG
+true.ske=skeleton(true.dir)  # skeleton graph of the data generating DAG
+true.vstr=vstructures(true.dir) ## vstructures of the data generating DAG
 
-temp<- dagbagM::hc(Y=Y.n,nodeType=rep("c",p), whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=10, seed = 1,  verbose = FALSE)
+(i) DAG learning by hill climbing: no bootstrap resample
+
+temp<- hc(Y=Y.n,nodeType=rep("c",p), whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=10, seed = 1,  verbose = FALSE)
 adj.temp=temp$adjacency
 
 (ii) DAG learning by hill climbing: for bootstrap resamples
 
 library(foreach)
 library(doParallel)
-boot.adj<- dagbagM::hc_boot_parallel(Y=Y.n, n.boot=10, nodeType=rep("c",p), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=10, seed = 1,  nodeShuffle=TRUE, numThread = 2,verbose = FALSE)
+boot.adj<- dagbagM::hc_boot_parallel(Y=Y.n, n.boot=50, nodeType=rep("c",p), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=10, seed = 1,  nodeShuffle=TRUE, numThread = 2,verbose = FALSE)
 
 (iii) Bootstrap aggregation of DAGs learnt from bootstrap resamples
+adj.bag=dagbagM::score_shd(boot.adj, alpha = 1, threshold=0) 
 
-adj.bag=dagbagM::score_shd(boot.adj, alpha = 1, threshold=0)
+(iv) Evaluations
+## results on DAG estimation
 sum(adj.bag==1&true.dir==0)/sum(adj.bag==1) ## FDR
 sum(adj.bag==1&true.dir==1)/sum(true.dir==1) ## Power
 
+## results on moral graph estimation
+adj.bag.moral=moral(adj.bag)
+sum(adj.bag.moral==1&true.moral==0)/sum(adj.bag.moral==1) ## FDR
+sum(adj.bag.moral==1&true.moral==1)/sum(true.moral==1) ## Power
+
+## results on skeleton graph estimation
+adj.bag.ske=moral(adj.bag)
+sum(adj.bag.ske==1&true.ske==0)/sum(adj.bag.ske==1) ## FDR
+sum(adj.bag.ske==1&true.ske==1)/sum(true.ske==1) ## Power
+
+## results on vstructures estimation
+adj.bag.vstr=vstructures(adj.bag)
+vstr.corr=compare.vstructures(target.vstructures=adj.bag.vstr, true.vstructures=true.vstr)
+1-nrow(vstr.corr)/nrow(adj.bag.vstr) ## FDR:
+nrow(vstr.corr)/nrow(true.vstr) ## power:
 
 ```
 
