@@ -131,21 +131,21 @@ true.moral=moral(true.dir) ## moral graph of the data generating DAG
 true.ske=skeleton(true.dir)  # skeleton graph of the data generating DAG
 true.vstr=vstructures(true.dir) ## vstructures of the data generating DAG
 
-(i) DAG learning by hill climbing: no bootstrap resample
+#(i) DAG learning by hill climbing: no bootstrap resample
 
 temp<- hc(Y=Y.n,nodeType=rep("c",p), whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=10, seed = 1,  verbose = FALSE)
 adj.temp=temp$adjacency
 
-(ii) DAG learning by hill climbing: for bootstrap resamples
+#(ii) DAG learning by hill climbing: for bootstrap resamples
 
 library(foreach)
 library(doParallel)
 boot.adj<- dagbagM::hc_boot_parallel(Y=Y.n, n.boot=50, nodeType=rep("c",p), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=10, seed = 1,  nodeShuffle=TRUE, numThread = 2,verbose = FALSE)
 
-(iii) Bootstrap aggregation of DAGs learnt from bootstrap resamples
+#(iii) Bootstrap aggregation of DAGs learnt from bootstrap resamples
 adj.bag=dagbagM::score_shd(boot.adj, alpha = 1, threshold=0) 
 
-(iv) Evaluations
+#(iv) Evaluations
 ## results on DAG estimation
 sum(adj.bag==1&true.dir==0)/sum(adj.bag==1) ## FDR
 sum(adj.bag==1&true.dir==1)/sum(true.dir==1) ## Power
