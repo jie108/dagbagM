@@ -156,7 +156,7 @@ sum(adj.bag.moral==1&true.moral==0)/sum(adj.bag.moral==1) ## FDR
 sum(adj.bag.moral==1&true.moral==1)/sum(true.moral==1) ## Power
 
 ## results on skeleton graph estimation
-adj.bag.ske=moral(adj.bag)
+adj.bag.ske=skeleton(adj.bag)
 sum(adj.bag.ske==1&true.ske==0)/sum(adj.bag.ske==1) ## FDR
 sum(adj.bag.ske==1&true.ske==1)/sum(true.ske==1) ## Power
 
