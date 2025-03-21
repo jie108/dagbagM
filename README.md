@@ -125,7 +125,9 @@ a matrix
 library(dagbagM)
 data(example)
 Y.n=example$Y # data matrix
-p<- dim(Y.n)[2] # no. of nodes
+p<- dim(Y.n)[2] # no. of nodes: 102
+n<-dim(Y.n)[1] # sample size: 102
+
 true.dir=example$true.dir  # adjacency matrix of the data generating DAG
 true.moral=moral_graph(true.dir) ## moral graph of the data generating DAG
 true.ske=skeleton(true.dir)  # skeleton graph of the data generating DAG
