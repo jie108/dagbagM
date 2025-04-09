@@ -36,7 +36,12 @@ contains the R scripts for replicating the simulation results in the manuscript.
 library(devtools)
 install_github("jie108/dagbagM",subdir="dagbagM")
 ```
+or alternatively
+```
+install.packages("remotes")
+remotes::install_github("jie108/dagbagM",subdir="dagbagM")
 
+```
 
 ## Usage
 
