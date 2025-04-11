@@ -33,14 +33,20 @@ contains the R scripts for replicating the simulation results in the manuscript.
 
 ## Installation
 ```
+#install.packages("devtools")
 library(devtools)
 install_github("jie108/dagbagM",subdir="dagbagM")
 ```
 or alternatively
 ```
-install.packages("remotes")
+#install.packages("remotes")
+library(remotes)
 remotes::install_github("jie108/dagbagM",subdir="dagbagM")
-
+```
+or install to a local library
+```
+.libPaths("~/R_libs")
+install_github("jie108/dagbagM",subdir="dagbagM", lib = "~/R_libs")
 ```
 
 ## Usage
