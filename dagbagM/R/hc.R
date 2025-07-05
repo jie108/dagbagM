@@ -133,13 +133,20 @@ hc_boot_parallel<-function(Y, n.boot=1, nodeType=NULL,  whiteList=NULL, blackLis
 ##nodeShuffle: whether (T) or not (F) to perform node shuffle (to avoid bias due to search order and score ties)  
 ##numThread: number of threads to use in parallel computing
 ##return: HC learned adjacency matrices on bootstrap resamples 
+  #
+  library(parallel)
+  library(foreach)
+  library(future)
+  library(doFuture)
+  
+  #
    p=ncol(Y)
    n=nrow(Y)
 
    ##check argument type 
    if(is.null(whiteList)){
     whiteList=matrix(FALSE, p,p)
-  }else{##check whiteList format 
+    }else{##check whiteList format 
       if(!is.matrix(whiteList)||!is.logical(whiteList)||length(dim(whiteList))!=2||dim(whiteList)[1]!=p || dim(whiteList)[2]!=p){
         stop(paste("whiteList must be a ", p,"by", p, " logical matrix!"))
       }   
@@ -149,15 +156,15 @@ hc_boot_parallel<-function(Y, n.boot=1, nodeType=NULL,  whiteList=NULL, blackLis
   if(is.null(blackList)){
     blackList<-matrix(FALSE, p,p)
         diag(blackList)<-TRUE
-  }else{##check black list format 
-    if(!is.matrix(blackList)||!is.logical(blackList)||length(dim(blackList))!=2||dim(blackList)[1]!=p || dim(blackList)[2]!=p){
+    }else{##check black list format 
+      if(!is.matrix(blackList)||!is.logical(blackList)||length(dim(blackList))!=2||dim(blackList)[1]!=p || dim(blackList)[2]!=p){
         stop(paste("blackList must be a ", p,"by", p, " logical matrix!"))
       }   
   } 
 
   if(is.null(nodeType)){
     nodeType=rep("c",p)
-  }else{##check noteType format 
+    }else{##check noteType format 
        if(!is.vector(nodeType)||!is.character(nodeType)||!all(nodeType=="c"|nodeType=="b")||length(nodeType)!=p){
           stop(paste("nodeType must be a length ", p, " character vector with elements either c or b!"))
        }
@@ -173,33 +180,35 @@ hc_boot_parallel<-function(Y, n.boot=1, nodeType=NULL,  whiteList=NULL, blackLis
   }
 
    ## hc on bootstrap resamples  
-
-   cl <- makeCluster(numThread)
-   registerDoParallel(cl)  
-   result<-foreach(i=1:n.boot, .combine="list",.multicombine = TRUE, .maxcombine = n.boot, .packages=c("dagbagM")) %dopar%{
+   plan(multisession, workers = min(numThread, detectCores()-1)) ## use plan(multisession): create independent R sessions, compatible with Rcpp calls
    
-     set.seed(i*1001+seed)
-     s.pick=sample(1:n, n, replace=TRUE) ##resample data 
-    
-     if(nodeShuffle){##shuffle node order 
-      node.rand=sample(1:p, p, replace=FALSE)  
-      node.index=sort(node.rand,decreasing=F,ind=T)$ix 
-     }else{##not shuffle node order
-      node.rand=1:p
-      node.index=1:p
-     }
-
-     Y.B=Y[s.pick, node.rand]
-     node.B=nodeType[node.rand]
-     whiteList.B=whiteList[node.rand, node.rand]
-     blackList.B=blackList[node.rand, node.rand]
-
-     curRes=hc_(Y.B, node.B, whiteList.B, blackList.B, tol, maxStep, restart, i*11+seed, verbose)
-     adjRes=curRes$adjacency
-     adjRes=adjRes[node.index, node.index]
-     adjRes
+   
+   result<-foreach(i = 1:n.boot,  .errorhandling = "stop",
+                   .options.future = list(seed = TRUE, packages=c("dagbagM"))) %dofuture% {
+   
+       set.seed(i*1001+seed)
+       s.pick=sample(1:n, n, replace=TRUE) ##resample data 
+      
+       if(nodeShuffle){##shuffle node order 
+        node.rand=sample(1:p, p, replace=FALSE)  
+        node.index=sort(node.rand,decreasing=F,ind=T)$ix 
+       }else{##not shuffle node order
+        node.rand=1:p
+        node.index=1:p
+       }
+  
+       Y.B=Y[s.pick, node.rand]
+       node.B=nodeType[node.rand]
+       whiteList.B=whiteList[node.rand, node.rand]
+       blackList.B=blackList[node.rand, node.rand]
+  
+       curRes=hc_(Y.B, node.B, whiteList.B, blackList.B, tol, maxStep, restart, i*11+seed, verbose)
+       adjRes=curRes$adjacency
+       adjRes=adjRes[node.index, node.index]
+       adjRes
    }
-   stopCluster(cl)
+   plan(sequential)  # reset future plan to sequential 
+   gc()              # force garbage collection
    
    ##return results as a p by p by n.boot array  
    return(array(as.numeric(unlist(result)), dim=c(p, p, n.boot)))
