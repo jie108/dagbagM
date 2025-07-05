@@ -8,4 +8,4 @@ Maintainer: Jie Peng <jiepeng@ucdavis.edu>
 Description: This package is for learning directed acycic graphs for mixture of continuous and binary variables.
 License: GPL (>= 2)
 Imports: Rcpp (>= 1.0.4)
-LinkingTo: Rcpp,RcppEigen, RcppNumerical, doParallel, foreach, igraph
+LinkingTo: Rcpp,RcppEigen, RcppNumerical, foreach, parallel, future, doFuture, igraph
