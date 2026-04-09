@@ -144,6 +144,8 @@ true.moral=moral_graph(true.dir) ## moral graph of the data generating DAG
 true.ske=skeleton(true.dir)  # skeleton graph of the data generating DAG
 true.vstr=vstructures(true.dir) ## vstructures of the data generating DAG
 
+sum(true.dir) #number of edges: 109
+
 #(i) DAG learning by hill climbing: no bootstrap resample
 
 temp<- dagbagM::hc(Y=Y.n,nodeType=rep("c",p), whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=10, seed = 1,  verbose = FALSE)
