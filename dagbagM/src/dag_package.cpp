@@ -618,9 +618,8 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeTy
   Rcpp:: NumericVector curScore=bicScoreAll(Y, nodeType,curPar); //current score of each neighborhood 
   
   //initialize score change by operations: start at  NA_REAL; update for each potential operation within each step
-  Rcpp::NumericMatrix delta(p,p); //record change of score (delta) by an operation  (add, delete or reverse an edge) to the current graph:
-  // if neither i->j nor j->i in the current graph, then delta(i,j) and delta(j,i) record  score change by adding i->j, j->i, respectively; 
-  // if j->i in the current graph, so that i->j not in, then delta(j,i) records score change by deleting j->i, and delta(i,j) change by reversing j->i; 
+  Rcpp::NumericMatrix delta(p,p); //record change of score (delta) by an operation  (add or delete  an edge) to the current graph:
+  // if j-> i in graph, then delta(j,i) records the change by deletion; if j->i not in graph, it records the change by addition 
   std::fill(delta.begin(), delta.end(), Rcpp::NumericVector::get_na()); //fill with NA 
   
   //initialize acyclic status: start at NA_LOGICAL; update for each potential operation within each step
@@ -708,10 +707,9 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y, const Rcpp::CharacterVector& nodeTy
                      Rcpp::NumericVector Y_j=Y(Rcpp::_,j);//node j vector 
                      
                      score_cr=bicScore(X_c, Y_j, nodeType[j]); //node j score after adding node i into its parent 
-                     delta_c=score_cr-curScore[j];//change due to adding i->j
-                     delta_c=delta_c+delta(j,i); //change of reversing j->i = change due to dropping j->i+change due to adding i->j
-                     delta(i,j)=delta_c; //record score change due to reversal of j->i
-                    
+                     delta(i,j)=score_cr-curScore[j];//change due to adding i->j
+                     delta_c= delta(i,j)+delta(j,i); //change of reversing j->i = change due to deleting j->i+change due to adding i->j
+                     
                      }else{//no need to recalculate node j score: use calculation from last step
                      delta_c=delta(i,j)+delta(j,i);
                      score_cr=delta(i,j)+curScore[j];
