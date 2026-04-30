@@ -181,6 +181,7 @@ vstr.corr=compare.vstructures(target.vstructures=adj.bag.vstr, true.vstructures=
 1-nrow(vstr.corr)/nrow(adj.bag.vstr) ## FDR: 0.375
 nrow(vstr.corr)/nrow(true.vstr) ## Power: 0.4545455
 
+
 ```
 
 ## Contributions
