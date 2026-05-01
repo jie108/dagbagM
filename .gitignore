@@ -1,0 +1,10 @@
+# Ignore all top-level directories except dagbagMv2
+/*/
+!/dagbagMv2/
+
+# Ignore specific files
+dagbagMv2_implementation_notes.md
+example_v2_v1.R
+HC_cache_implementation_and_benchmark_summary.md
+
+.DS_Store
