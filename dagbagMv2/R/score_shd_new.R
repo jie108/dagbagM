@@ -12,40 +12,40 @@
   x
 }
 
-.prepare_score_constraints <- function(p, whitelist, blacklist) {
-  whitelist <- .validate_graph_constraint(whitelist, p, "whitelist")
-  blacklist <- .validate_graph_constraint(blacklist, p, "blacklist")
-  diag(blacklist) <- TRUE
-  list(whitelist = whitelist, blacklist = blacklist)
+.prepare_score_constraints <- function(p, whiteList, blackList) {
+  whiteList <- .validate_graph_constraint(whiteList, p, "whiteList")
+  blackList <- .validate_graph_constraint(blackList, p, "blackList")
+  diag(blackList) <- TRUE
+  list(whiteList = whiteList, blackList = blackList)
 }
 
-score_shd <- function(boot.adj, alpha = 1, threshold = 0, whitelist = NULL,
-                      blacklist = NULL, max.step = NULL, verbose = FALSE) {
+score_shd <- function(boot.adj, alpha = 1, threshold = 0, whiteList = NULL,
+                      blackList = NULL, maxStep = NULL, verbose = FALSE) {
   ## C++ computes edge frequencies from the bootstrap array and then performs
   ## the deterministic greedy generalized-SHD aggregation.
-  ## max.step is retained for backward compatibility with v1 call sites but has
+  ## maxStep is retained for backward compatibility with v1 call sites but has
   ## no effect; the C++ aggregator processes all eligible candidates in one pass.
-  if (!is.null(max.step)) {
-    warning("max.step is deprecated and has no effect", call. = FALSE)
+  if (!is.null(maxStep)) {
+    warning("maxStep is deprecated and has no effect", call. = FALSE)
   }
   if (is.null(dim(boot.adj)) || length(dim(boot.adj)) != 3L ||
       dim(boot.adj)[1] != dim(boot.adj)[2]) {
     stop("boot.adj must be a p by p by B array")
   }
   p <- dim(boot.adj)[1]
-  constraints <- .prepare_score_constraints(p, whitelist, blacklist)
-  score_shd_cpp(boot.adj, alpha, threshold, constraints$whitelist,
-                constraints$blacklist, verbose)
+  constraints <- .prepare_score_constraints(p, whiteList, blackList)
+  score_shd_cpp(boot.adj, alpha, threshold, constraints$whiteList,
+                constraints$blackList, verbose)
 }
 
-score_shd_freq <- function(freq, alpha = 1, threshold = 0, whitelist = NULL,
-                           blacklist = NULL, max.step = NULL, verbose = FALSE) {
+score_shd_freq <- function(freq, alpha = 1, threshold = 0, whiteList = NULL,
+                           blackList = NULL, maxStep = NULL, verbose = FALSE) {
   ## Frequency-only aggregation pairs with hc_boot(..., return = "freq") so
   ## large bootstrap runs do not need to retain all individual adjacency arrays.
-  ## max.step is retained for backward compatibility with v1 call sites but has
+  ## maxStep is retained for backward compatibility with v1 call sites but has
   ## no effect; the C++ aggregator processes all eligible candidates in one pass.
-  if (!is.null(max.step)) {
-    warning("max.step is deprecated and has no effect", call. = FALSE)
+  if (!is.null(maxStep)) {
+    warning("maxStep is deprecated and has no effect", call. = FALSE)
   }
   if (!is.matrix(freq) || nrow(freq) != ncol(freq)) {
     stop("freq must be a square matrix")
@@ -53,7 +53,7 @@ score_shd_freq <- function(freq, alpha = 1, threshold = 0, whitelist = NULL,
   freq <- as.matrix(freq)
   storage.mode(freq) <- "double"
   p <- nrow(freq)
-  constraints <- .prepare_score_constraints(p, whitelist, blacklist)
-  score_shd_freq_cpp(freq, alpha, threshold, constraints$whitelist,
-                     constraints$blacklist, verbose)
+  constraints <- .prepare_score_constraints(p, whiteList, blackList)
+  score_shd_freq_cpp(freq, alpha, threshold, constraints$whiteList,
+                     constraints$blackList, verbose)
 }

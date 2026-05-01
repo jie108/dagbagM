@@ -35,22 +35,22 @@ hc_boot_parallel(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
                  addDeleteOnly = FALSE,
                  return = c("array", "freq", "both"))
 
-score_shd(boot.adj, alpha = 1, threshold = 0, whitelist = NULL,
-          blacklist = NULL, max.step = NULL, verbose = FALSE)
+score_shd(boot.adj, alpha = 1, threshold = 0, whiteList = NULL,
+          blackList = NULL, maxStep = NULL, verbose = FALSE)
 
-score_shd_freq(freq, alpha = 1, threshold = 0, whitelist = NULL,
-               blacklist = NULL, max.step = NULL, verbose = FALSE)
+score_shd_freq(freq, alpha = 1, threshold = 0, whiteList = NULL,
+               blackList = NULL, maxStep = NULL, verbose = FALSE)
 }
 \arguments{
 \item{Y}{Numeric data matrix.}
 \item{nodeType}{Character vector with entries \code{"c"} for continuous and
 \code{"b"} for binary nodes.}
-\item{whiteList, whitelist}{Logical or 0/1 matrix of required directed edges.}
-\item{blackList, blacklist}{Logical or 0/1 matrix of forbidden directed edges.}
+\item{whiteList}{Logical or 0/1 matrix of required directed edges.}
+\item{blackList}{Logical or 0/1 matrix of forbidden directed edges.}
 \item{standardize}{Whether to standardize continuous nodes before fitting.}
 \item{tol}{Minimum BIC improvement threshold.}
-\item{maxStep, max.step}{Maximum hill-climbing steps; \code{max.step} is a
-legacy aggregation argument.}
+\item{maxStep}{Maximum hill-climbing steps. In \code{score_shd} and
+\code{score_shd_freq} this is a deprecated legacy argument with no effect.}
 \item{restart}{Number of hill-climbing restarts.}
 \item{seed}{Seed for bootstrap sampling, shuffling, and tie-breaking.}
 \item{verbose}{Whether to print progress.}

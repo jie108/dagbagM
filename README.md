@@ -52,82 +52,96 @@ install_github("jie108/dagbagM",subdir="dagbagMv2", lib = "~/R_libs")
 ## Usage
 
 ```
-hc: A function to learn a DAG model for the given data with no bootstrap resamples by the hill climbing algorithm for mixture of continuous and binary variables
-dagbagM::hc(Y,nodeType, whiteList, blackList, tol, standardize, maxStep, restart, seed,  verbose)
+hc: Learn a DAG model by hill climbing for mixture of continuous and binary variables.
+dagbagMv2::hc(Y, nodeType, whiteList, blackList, tol, standardize, maxStep, restart, seed,
+              verbose, debug, addDeleteOnly)
 
-hc_boot_parallel: A function to learn a DAG model for every bootstrap resmples of the given data by the hill climbing algorithm for mixture of continuous and binary variables
-dagbagM::hc_boot_parallel(Y, node.type, n.boot, whiteList, blackList, maxStep, standardize, tol, restart, seed, nodeShuffle, numThread, verbose)
+hc_boot: Learn a DAG model for every bootstrap resample (sequential).
+dagbagMv2::hc_boot(Y, n.boot, nodeType, whiteList, blackList, standardize, tol, maxStep,
+                   restart, seed, nodeShuffle, verbose, debug, addDeleteOnly, return)
 
-score_shd: A function to use structural hamming distance to aggregate DAGs. It aggregates an ensemble of DAGs to obtain a DAG that minimizes the overall distance to the ensemble.
-score_shd(boot.adj, alpha, threshold,  whitelist,  blacklist, max.step, verbose)
+hc_boot_parallel: Learn a DAG model for every bootstrap resample (parallel).
+dagbagMv2::hc_boot_parallel(Y, n.boot, nodeType, whiteList, blackList, standardize, tol,
+                            maxStep, restart, seed, nodeShuffle, numThread, verbose, debug,
+                            addDeleteOnly, return)
+
+score_shd: Aggregate an ensemble of DAGs using generalized structural hamming distance.
+dagbagMv2::score_shd(boot.adj, alpha, threshold, whiteList, blackList, maxStep, verbose)
+
+score_shd_freq: Aggregate from an edge frequency matrix using generalized structural hamming distance.
+dagbagMv2::score_shd_freq(freq, alpha, threshold, whiteList, blackList, maxStep, verbose)
 ```
 
 
 ## Arguments
 
-### Arguments for dagbagM::hc and dagbagM::hc_boot_parallel
+### Arguments for dagbagMv2::hc, dagbagMv2::hc_boot, and dagbagMv2::hc_boot_parallel
   
-| Parameter                 | Default       | Description   |	
-| :------------------------ |:-------------:| :-------------|
-| Y	       |	           | an n by p data matrix: n – sample size, p – number of variables
-| n.boot (only for hc_boot_parallel) |      1       | an integer: the number of bootstrap resamples of the data matrix Y
-| node.type  		       |  NULL       | a vector of length equal to the number of variables specifying the type of variable/node type: "c" for continuous and "b" for binary
-| whitelist          | NULL   |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
-| blacklist	         | NULL    | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
-| standardize |  TRUE | logical: whether to standardize the data to have mean zero and sd one
-| tol     |     1e-06     | a scalar: a number to indicate a threshold below which values will be treated as zero
-| maxStep		           | 2000    |an integer: the maximum number of search steps of the hill climbing algorithm
-| restart | 10 | an integer: number of times to restart the search algorithm after a local optimal is achieved. The purpose is to search for global optimal
-|seed| 1 | an integer: seed used for bootstrap restart and bootstrap resampling
-|nodeShuffle (only for hc_boot_parallel) | TRUE | logical: whether to shuffle the order of the variables before DAG learning
-| numThread (only for hc_boot_parallel) | 2 |  an integer for running parallel computation of DAG learning from bootstrap resamples
-| verbose		     | FALSE   | logical: whether print the step information
+| Parameter | Default | Description |
+| :--- | :---: | :--- |
+| Y | | an n by p data matrix: n -- sample size, p -- number of variables |
+| n.boot (hc_boot, hc_boot_parallel) | 1 | an integer: the number of bootstrap resamples of the data matrix Y |
+| nodeType | NULL | a vector of length p specifying the type of each variable: "c" for continuous and "b" for binary |
+| whiteList | NULL | a p by p logical or 0-1 matrix: if the (i,j)th-entry is TRUE/1, the edge i-->j will always be included in the DAG |
+| blackList | NULL | a p by p logical or 0-1 matrix: if the (i,j)th-entry is TRUE/1, the edge i-->j will be excluded from the DAG |
+| standardize | TRUE | logical: whether to standardize continuous nodes to have mean zero and sd one |
+| tol | 1e-06 | a scalar: minimum BIC improvement threshold for accepting a step |
+| maxStep | 2000 | an integer: the maximum number of search steps of the hill climbing algorithm |
+| restart | 1 | an integer: number of random restarts to search for a global optimum |
+| seed | 1 | an integer: seed for bootstrap resampling, node shuffling, and tie-breaking |
+| nodeShuffle (hc_boot, hc_boot_parallel) | TRUE | logical: whether to shuffle the order of the variables before DAG learning |
+| numThread (hc_boot_parallel only) | 2 | an integer: number of parallel workers for bootstrap fitting |
+| verbose | FALSE | logical: whether to print step information |
+| debug | FALSE | logical: whether to run additional cache and acyclicity checks during HC |
+| addDeleteOnly | FALSE | logical: whether to skip edge reversal candidates in HC |
+| return (hc_boot, hc_boot_parallel) | "array" | bootstrap output mode: "array" (p x p x B), "freq" (p x p frequencies), or "both" |
 
 
-
-### Arguments for dagbagM::score_shd
+### Arguments for dagbagMv2::score_shd and dagbagMv2::score_shd_freq
   
-| Parameter                 | Default       | Description   |	
-| :------------------------ |:-------------:| :-------------|
-| boot.adj	       |	           | A p by p by B array, where B is the number of DAGs to be aggregated. It records the adjacency matrices. It may be the output of the "hc_boot_parallel" function.
-| alpha         | 1          |a positive scalar: alpha defines which member of the gSHD family should be used to aggregate the DAGs. In general, the larger the alpha, the more aggressive of the aggregation, in that less edges are retained leading to smaller FDR and less power
-| threshold 	       |	0	     |a scalar: it defines the frequency cut-off value(=(1-threshold)/2), "0" corresponds to cut-off 0.5
-| whitelist          | NULL           |  a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will always be included in the DAG during the search
-| blacklist	         | NULL             | a p by p 0-1 matrix: if the (i,j)th-entry is "1", then the edge i–>j will be excluded from the DAG during the search
-| max.step		           | NULL             |This is a legacy parameter and it does not have any effect 
-| verbose		     |     FALSE     | logical: whether print the step information
+| Parameter | Default | Description |
+| :--- | :---: | :--- |
+| boot.adj (score_shd only) | | a p by p by B array of bootstrap DAG adjacency matrices |
+| freq (score_shd_freq only) | | a p by p edge selection frequency matrix |
+| alpha | 1 | a positive scalar: controls the gSHD family member used for aggregation; larger alpha retains fewer edges (lower FDR, less power) |
+| threshold | 0 | a scalar: defines the frequency cutoff (=(1-threshold)/2); 0 corresponds to cutoff 0.5 |
+| whiteList | NULL | a p by p logical or 0-1 matrix: if the (i,j)th-entry is TRUE/1, the edge i-->j will always be included |
+| blackList | NULL | a p by p logical or 0-1 matrix: if the (i,j)th-entry is TRUE/1, the edge i-->j will be excluded |
+| maxStep | NULL | deprecated legacy parameter with no effect |
+| verbose | FALSE | logical: whether to print step information |
 
 
 
 ## Value
 
-### Value for dagbagM::hc
+### Value for dagbagMv2::hc
 
-a list of three components
+a list of five components
 
-| Object       | Description   |
-| :------------------------ | :-------------|
-| adjacency	  | adjacency matrix of the learned DAG
-| score       | BIC score at each search step
-| operations  | a matrix recording the selected operation, addition, deletion or reversal of an edge, at each search step
-| deltaMin    | Minimum value of the score change at every step
+| Object | Description |
+| :--- | :--- |
+| adjacency | adjacency matrix of the learned DAG |
+| score | BIC score for each node under the final parent configuration |
+| operations | a list of 3-element vectors recording the selected operation (1=add, 2=delete, 3=reverse) at each step |
+| deltaMin | score change (delta) at every accepted step |
+| steps | total number of accepted steps |
 
-### Value for dagbagM::hc_boot_parallel
+### Value for dagbagMv2::hc_boot and dagbagMv2::hc_boot_parallel
 
-an array
+depends on the `return` argument
 
-| Object       | Description   |
-| :------------------------ | :-------------|
-| adjacency	  | an array of adjacency matrices of the learned DAGs
+| return | Value |
+| :--- | :--- |
+| "array" | a p by p by B array of bootstrap DAG adjacency matrices |
+| "freq" | a p by p matrix of edge selection frequencies |
+| "both" | a list with components `adjacency` (array) and `freq` (matrix) |
 
 
-### Value for dagbagM::score_shd
+### Value for dagbagMv2::score_shd and dagbagMv2::score_shd_freq
 
-a matrix 
-
-| Object       | Description   |
-| :------------------------ | :-------------|
-| adj.matrix	  | adjacency matrix of the learned DAG
+| Object | Description |
+| :--- | :--- |
+| (matrix) | a p by p integer adjacency matrix of the aggregated DAG |
 
 
   
