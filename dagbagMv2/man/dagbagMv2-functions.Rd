@@ -70,4 +70,30 @@ legacy aggregation argument.}
 step count. Bootstrap functions return an adjacency array, a frequency matrix,
 or both. Aggregation functions return an adjacency matrix.
 }
+\examples{
+## Generate small mixed data: 3 continuous + 1 binary node
+set.seed(42)
+n <- 80
+x1 <- rnorm(n)
+x2 <- 0.8 * x1 + rnorm(n, 0, 0.6)
+x3 <- -0.4 * x1 + 0.7 * x2 + rnorm(n, 0, 0.7)
+x4 <- rbinom(n, 1, plogis(0.9 * x1 - 0.6 * x2))
+Y <- cbind(x1, x2, x3, x4)
+nodeType <- c("c", "c", "c", "b")
+
+## Single hill-climbing fit
+fit <- hc(Y, nodeType)
+fit$adjacency
+
+## Bootstrap aggregation (small B for speed)
+boot_freq <- hc_boot(Y, n.boot = 5, nodeType = nodeType, return = "freq")
+agg <- score_shd_freq(boot_freq)
+agg
+
+## Graph summaries
+cal_order(agg)
+skeleton(agg)
+moral_graph(agg)
+vstructures(agg)
+}
 \keyword{models}

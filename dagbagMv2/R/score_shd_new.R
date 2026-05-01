@@ -23,6 +23,11 @@ score_shd <- function(boot.adj, alpha = 1, threshold = 0, whitelist = NULL,
                       blacklist = NULL, max.step = NULL, verbose = FALSE) {
   ## C++ computes edge frequencies from the bootstrap array and then performs
   ## the deterministic greedy generalized-SHD aggregation.
+  ## max.step is retained for backward compatibility with v1 call sites but has
+  ## no effect; the C++ aggregator processes all eligible candidates in one pass.
+  if (!is.null(max.step)) {
+    warning("max.step is deprecated and has no effect", call. = FALSE)
+  }
   if (is.null(dim(boot.adj)) || length(dim(boot.adj)) != 3L ||
       dim(boot.adj)[1] != dim(boot.adj)[2]) {
     stop("boot.adj must be a p by p by B array")
@@ -37,6 +42,11 @@ score_shd_freq <- function(freq, alpha = 1, threshold = 0, whitelist = NULL,
                            blacklist = NULL, max.step = NULL, verbose = FALSE) {
   ## Frequency-only aggregation pairs with hc_boot(..., return = "freq") so
   ## large bootstrap runs do not need to retain all individual adjacency arrays.
+  ## max.step is retained for backward compatibility with v1 call sites but has
+  ## no effect; the C++ aggregator processes all eligible candidates in one pass.
+  if (!is.null(max.step)) {
+    warning("max.step is deprecated and has no effect", call. = FALSE)
+  }
   if (!is.matrix(freq) || nrow(freq) != ncol(freq)) {
     stop("freq must be a square matrix")
   }

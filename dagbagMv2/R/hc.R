@@ -180,8 +180,13 @@ hc <- function(Y, nodeType = NULL, whiteList = NULL, blackList = NULL,
     return(array(as.numeric(unlist(result, use.names = FALSE)), dim = c(p, p, n.boot)))
   }
 
-  freq <- Reduce(`+`, lapply(result, function(x) x + 0)) / n.boot
+  freq <- matrix(0, p, p)
+  for (i in seq_len(n.boot)) {
+    freq <- freq + result[[i]]
+  }
+  freq <- freq / n.boot
   diag(freq) <- 0
+
   if (return == "freq") {
     return(freq)
   }

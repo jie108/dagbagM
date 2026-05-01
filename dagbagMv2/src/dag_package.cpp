@@ -214,56 +214,40 @@ void validate_hc_inputs(const Rcpp::NumericMatrix& Y,
   }
 }
 
-// Build the node-wise regression design matrix for a candidate parent set.
-// The final column is the intercept. extraParent/dropParent let add/delete and
-// reverse candidates be scored without mutating the current parent lists.
-Rcpp::NumericMatrix make_design(const Rcpp::NumericMatrix& Y,
-                                const std::vector<int>& parents,
-                                int extraParent = -1,
-                                int dropParent = -1) {
+// Fill a pre-allocated workspace with the design matrix for a candidate parent
+// set. Returns the number of columns written (q). The workspace must have at
+// least n rows and (p+1) columns. Avoids per-call R heap allocation.
+int fill_design(MatrixXd& workspace, const Rcpp::NumericMatrix& Y,
+                const std::vector<int>& parents,
+                int extraParent = -1,
+                int dropParent = -1) {
   const int n = Y.nrow();
-  int q = 1;
-  for (std::size_t k = 0; k < parents.size(); ++k) {
-    if (parents[k] != dropParent) {
-      ++q;
-    }
-  }
-  if (extraParent >= 0) {
-    ++q;
-  }
-
-  Rcpp::NumericMatrix X(n, q);
   int col = 0;
   if (extraParent >= 0) {
-    for (int row = 0; row < n; ++row) {
-      X(row, col) = Y(row, extraParent);
-    }
+    workspace.col(col) = Eigen::Map<const VectorXd>(&Y(0, extraParent), n);
     ++col;
   }
   for (std::size_t k = 0; k < parents.size(); ++k) {
-    const int parent = parents[k];
-    if (parent == dropParent) {
+    if (parents[k] == dropParent) {
       continue;
     }
-    for (int row = 0; row < n; ++row) {
-      X(row, col) = Y(row, parent);
-    }
+    workspace.col(col) = Eigen::Map<const VectorXd>(&Y(0, parents[k]), n);
     ++col;
   }
-  for (int row = 0; row < n; ++row) {
-    X(row, col) = 1.0;
-  }
-  return X;
+  workspace.col(col).setOnes();
+  ++col;
+  return col;
 }
 
-MatrixXd crossprod_self(const MatrixXd& A) {
+typedef Eigen::Ref<const MatrixXd> ConstMatRef;
+typedef Eigen::Ref<const VectorXd> ConstVecRef;
+
+MatrixXd crossprod_self(const ConstMatRef& A) {
   const int n = A.cols();
   return MatrixXd(n, n).setZero().selfadjointView<Lower>().rankUpdate(A.adjoint());
 }
 
-double continuous_loglik(const Rcpp::NumericMatrix& x, const Rcpp::NumericVector& y) {
-  const MapMat X = Rcpp::as<MapMat>(x);
-  const MapVec Y = Rcpp::as<MapVec>(y);
+double continuous_loglik(const ConstMatRef& X, const ConstVecRef& Y) {
   const int n = X.rows();
   LLT<MatrixXd> llt(crossprod_self(X));
   if (llt.info() != Eigen::Success) {
@@ -281,18 +265,18 @@ double continuous_loglik(const Rcpp::NumericMatrix& x, const Rcpp::NumericVector
   return -static_cast<double>(n) / 2.0 * (std::log(2.0 * M_PI) + std::log(s2) + 1.0);
 }
 
-// Logistic regression objective copied from the original RcppNumerical pattern:
-// optimize negative log-likelihood and return the maximized log-likelihood.
+// Logistic regression objective using Eigen types directly so the design
+// matrix can be a workspace block view without R heap allocation.
 class LogisticReg: public MFuncGrad {
 private:
-  const MapMat X;
-  const MapVec Y;
+  const ConstMatRef X;
+  const ConstVecRef Y;
   const int n;
   Eigen::VectorXd xbeta;
   Eigen::VectorXd prob;
 
 public:
-  LogisticReg(const MapMat x_, const MapVec y_) :
+  LogisticReg(const ConstMatRef& x_, const ConstVecRef& y_) :
     X(x_), Y(y_), n(X.rows()), xbeta(n), prob(n) {}
 
   double f_grad(Constvec& beta, Refvec grad) {
@@ -308,13 +292,10 @@ public:
   }
 };
 
-double logistic_loglik(const Rcpp::NumericMatrix& x, const Rcpp::NumericVector& y) {
-  const int p = x.ncol();
-  const MapMat X = Rcpp::as<MapMat>(x);
-  const MapVec Y = Rcpp::as<MapVec>(y);
+double logistic_loglik(const ConstMatRef& X, const ConstVecRef& Y) {
+  const int q = X.cols();
   LogisticReg nll(X, Y);
-  Rcpp::NumericVector start(p);
-  MapVec beta(start.begin(), start.length());
+  VectorXd beta = VectorXd::Zero(q);
   double fopt = kInf;
   const int status = optim_lbfgs(nll, beta, fopt, 300, 1e-8, 1e-5);
   if (status < 0 || !std::isfinite(fopt)) {
@@ -323,12 +304,12 @@ double logistic_loglik(const Rcpp::NumericMatrix& x, const Rcpp::NumericVector& 
   return -fopt;
 }
 
-double bic_score(const Rcpp::NumericMatrix& x,
-                 const Rcpp::NumericVector& y,
+double bic_score(const ConstMatRef& X,
+                 const ConstVecRef& y,
                  const std::string& nodeType) {
-  const int n = x.nrow();
-  const int q = x.ncol();
-  const double loglik = (nodeType == "c") ? continuous_loglik(x, y) : logistic_loglik(x, y);
+  const int n = X.rows();
+  const int q = X.cols();
+  const double loglik = (nodeType == "c") ? continuous_loglik(X, y) : logistic_loglik(X, y);
   if (!std::isfinite(loglik)) {
     return kInf;
   }
@@ -338,15 +319,17 @@ double bic_score(const Rcpp::NumericMatrix& x,
 
 // Score one node conditional on its current or candidate parent set.
 // Smaller BIC is better, so HC accepts negative score changes.
-double node_score(const Rcpp::NumericMatrix& Y,
+double node_score(MatrixXd& workspace,
+                  const Rcpp::NumericMatrix& Y,
                   const std::vector<std::string>& nodeType,
                   const AdjList& parents,
                   int node,
                   int extraParent = -1,
                   int dropParent = -1) {
-  Rcpp::NumericMatrix X = make_design(Y, parents[node], extraParent, dropParent);
-  Rcpp::NumericVector y = Y(Rcpp::_, node);
-  return bic_score(X, y, nodeType[node]);
+  const int n = Y.nrow();
+  const int q = fill_design(workspace, Y, parents[node], extraParent, dropParent);
+  Eigen::Map<const VectorXd> y(&Y(0, node), n);
+  return bic_score(workspace.leftCols(q), y, nodeType[node]);
 }
 
 // One candidate-cache entry. Add/delete use value + scoreA + versionA.
@@ -603,6 +586,7 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
                bool addDeleteOnly = false) {
   validate_hc_inputs(Y, nodeType, whiteList, blackList, tol, maxStep, 1, seed);
 
+  const int n = Y.nrow();
   const int p = Y.ncol();
   std::vector<std::string> types(p);
   for (int i = 0; i < p; ++i) {
@@ -615,10 +599,11 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
   AdjList parents = graph_to_parents(graph, p);
   AdjList children = graph_to_children(graph, p);
 
+  MatrixXd workspace(n, p + 1);
   std::vector<double> curScore(p);
   std::vector<int> version(p, 0);
   for (int i = 0; i < p; ++i) {
-    curScore[i] = node_score(Y, types, parents, i);
+    curScore[i] = node_score(workspace, Y, types, parents, i);
     if (!std::isfinite(curScore[i])) {
       Rcpp::stop("initial node score is non-finite; check data and whitelist");
     }
@@ -658,12 +643,12 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
           // the target node to.
           OneCache& del = deleteCache[idx];
           if (del.versionA != version[to]) {
-            del.scoreA = node_score(Y, types, parents, to, -1, from);
+            del.scoreA = node_score(workspace, Y, types, parents, to, -1, from);
             del.value = del.scoreA - curScore[to];
             del.versionA = version[to];
           }
           if (debug) {
-            const double recomputedScore = node_score(Y, types, parents, to, -1, from);
+            const double recomputedScore = node_score(workspace, Y, types, parents, to, -1, from);
             check_cached_delta("delete", from, to,
                                del.scoreA, recomputedScore,
                                0.0, 0.0,
@@ -685,15 +670,16 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
           if (!addDeleteOnly && !has_edge(black, to, from, p) && acyclic_reverse(from, to, parents)) {
             OneCache& rev = reverseCache[idx];
             if (rev.versionA != version[to] || rev.versionB != version[from]) {
-              rev.scoreA = node_score(Y, types, parents, to, -1, from);
-              rev.scoreB = node_score(Y, types, parents, from, to, -1);
+              // Reuse del.scoreA: same computation, already fresh this iteration.
+              rev.scoreA = del.scoreA;
+              rev.scoreB = node_score(workspace, Y, types, parents, from, to, -1);
               rev.value = (rev.scoreA - curScore[to]) + (rev.scoreB - curScore[from]);
               rev.versionA = version[to];
               rev.versionB = version[from];
             }
             if (debug) {
-              const double recomputedScoreA = node_score(Y, types, parents, to, -1, from);
-              const double recomputedScoreB = node_score(Y, types, parents, from, to, -1);
+              const double recomputedScoreA = node_score(workspace, Y, types, parents, to, -1, from);
+              const double recomputedScoreB = node_score(workspace, Y, types, parents, from, to, -1);
               const double recomputedDelta =
                 (recomputedScoreA - curScore[to]) + (recomputedScoreB - curScore[from]);
               check_cached_delta("reverse", from, to,
@@ -721,12 +707,12 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
           // Adding from -> to changes only the parent set and local score of to.
           OneCache& add = addCache[idx];
           if (add.versionA != version[to]) {
-            add.scoreA = node_score(Y, types, parents, to, from, -1);
+            add.scoreA = node_score(workspace, Y, types, parents, to, from, -1);
             add.value = add.scoreA - curScore[to];
             add.versionA = version[to];
           }
           if (debug) {
-            const double recomputedScore = node_score(Y, types, parents, to, from, -1);
+            const double recomputedScore = node_score(workspace, Y, types, parents, to, from, -1);
             check_cached_delta("add", from, to,
                                add.scoreA, recomputedScore,
                                0.0, 0.0,
