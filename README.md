@@ -133,53 +133,66 @@ a matrix
   
 ## Examples
 ```
-library(dagbagM)
+rm(list=ls())
+library(dagbagMv2)
 data(example)
 Y.n=example$Y # data matrix
-p<- dim(Y.n)[2] # no. of nodes: 102
-n<-dim(Y.n)[1] # sample size: 102
+p<- dim(Y.n)[2] # no. of nodes: p=102
+n<-dim(Y.n)[1] # sample size: n=102
 
 true.dir=example$true.dir  # adjacency matrix of the data generating DAG
 true.moral=moral_graph(true.dir) ## moral graph of the data generating DAG
 true.ske=skeleton(true.dir)  # skeleton graph of the data generating DAG
 true.vstr=vstructures(true.dir) ## vstructures of the data generating DAG
 
-sum(true.dir) #number of edges: 109
+sum(true.dir) #number of edges: |E|= 109
 
 #(i) DAG learning by hill climbing: no bootstrap resample
 
-temp<- dagbagM::hc(Y=Y.n,nodeType=rep("c",p), whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=10, seed = 1,  verbose = FALSE)
+temp<- dagbagMv2::hc(Y=Y.n,nodeType=rep("c",p), whiteList=NULL, blackList=NULL, tol = 1e-6, standardize=TRUE, maxStep = 1000, restart=1, seed = 1,  verbose = FALSE)
 adj.temp=temp$adjacency
+
+# Evaluations
+# results on DAG estimation
+sum(adj.temp==1&true.dir==0)/sum(adj.temp==1) ## FDR: 0.8803681
+sum(adj.temp==1&true.dir==1)/sum(true.dir==1) ## Power: 0.3577982
+
+# results on skeleton graph estimation
+adj.temp.ske=skeleton(adj.temp)
+sum(adj.temp.ske==1&true.ske==0)/sum(adj.temp.ske==1) ## FDR: 0.7055215
+sum(adj.temp.ske==1&true.ske==1)/sum(true.ske==1) ## Power: 0.8807339
+
 
 #(ii) DAG learning by hill climbing: for bootstrap resamples
 
 library(foreach)
-library(doParallel)
-boot.adj<- dagbagM::hc_boot_parallel(Y=Y.n, n.boot=50, nodeType=rep("c",p), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=10, seed = 1,  nodeShuffle=TRUE, numThread = 2,verbose = FALSE)
+library(doFuture)
+boot.adj<- dagbagMv2::hc_boot_parallel(Y=Y.n, n.boot=50, nodeType=rep("c",p), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=1, seed = 1,  nodeShuffle=TRUE, numThread = 2, return="array", verbose = FALSE)
 
-#(iii) Bootstrap aggregation of DAGs learnt from bootstrap resamples
-adj.bag=dagbagM::score_shd(boot.adj, alpha = 1, threshold=0) 
+#(iii) Bootstrap aggregation of DAGs learnt from bootstrap resamples: threshold=0 corresponds to 50% selection freq. cutoff
+adj.bag=dagbagMv2::score_shd(boot.adj, alpha = 1, threshold=0) 
 
 #(iv) Evaluations
 ## results on DAG estimation
-sum(adj.bag==1&true.dir==0)/sum(adj.bag==1) ## FDR: 0.4324324
-sum(adj.bag==1&true.dir==1)/sum(true.dir==1) ## Power: 0.5779817
-
-## results on moral graph estimation
-adj.bag.moral=moral_graph(adj.bag)
-sum(adj.bag.moral==1&true.moral==0)/sum(adj.bag.moral==1) ## FDR: 0.2215569
-sum(adj.bag.moral==1&true.moral==1)/sum(true.moral==1) ## Power: 0.7065217
+sum(adj.bag==1&true.dir==0)/sum(adj.bag==1) ## FDR:  0.3636364
+sum(adj.bag==1&true.dir==1)/sum(true.dir==1) ## Power:  0.6422018
 
 ## results on skeleton graph estimation
 adj.bag.ske=skeleton(adj.bag)
-sum(adj.bag.ske==1&true.ske==0)/sum(adj.bag.ske==1) ## FDR: 0.1801802
-sum(adj.bag.ske==1&true.ske==1)/sum(true.ske==1) ## Power: 0.8348624
+sum(adj.bag.ske==1&true.ske==0)/sum(adj.bag.ske==1) ## FDR: 0.1818182
+sum(adj.bag.ske==1&true.ske==1)/sum(true.ske==1) ## Power: 0.8256881
+
+## results on moral graph estimation
+adj.bag.moral=moral_graph(adj.bag)
+sum(adj.bag.moral==1&true.moral==0)/sum(adj.bag.moral==1) ## FDR: 0.2369942
+sum(adj.bag.moral==1&true.moral==1)/sum(true.moral==1) ## Power:0.7173913
+
 
 ## results on vstructures estimation
 adj.bag.vstr=vstructures(adj.bag)
 vstr.corr=compare.vstructures(target.vstructures=adj.bag.vstr, true.vstructures=true.vstr)
-1-nrow(vstr.corr)/nrow(adj.bag.vstr) ## FDR: 0.375
-nrow(vstr.corr)/nrow(true.vstr) ## Power: 0.4545455
+1-nrow(vstr.corr)/nrow(adj.bag.vstr) ## FDR: 0.421875
+nrow(vstr.corr)/nrow(true.vstr) ## Power: 0.4805195
 
 
 ```
