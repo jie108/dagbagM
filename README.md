@@ -35,18 +35,18 @@ contains the R scripts for replicating the simulation results in the manuscript.
 ```
 #install.packages("devtools")
 library(devtools)
-install_github("jie108/dagbagM",subdir="dagbagM")
+install_github("jie108/dagbagM",subdir="dagbagMv2")
 ```
 or alternatively
 ```
 #install.packages("remotes")
 library(remotes)
-remotes::install_github("jie108/dagbagM",subdir="dagbagM")
+remotes::install_github("jie108/dagbagM",subdir="dagbagMv2")
 ```
 or install to a local library
 ```
 .libPaths("~/R_libs")
-install_github("jie108/dagbagM",subdir="dagbagM", lib = "~/R_libs")
+install_github("jie108/dagbagM",subdir="dagbagMv2", lib = "~/R_libs")
 ```
 
 ## Usage
@@ -180,6 +180,7 @@ adj.bag.vstr=vstructures(adj.bag)
 vstr.corr=compare.vstructures(target.vstructures=adj.bag.vstr, true.vstructures=true.vstr)
 1-nrow(vstr.corr)/nrow(adj.bag.vstr) ## FDR: 0.375
 nrow(vstr.corr)/nrow(true.vstr) ## Power: 0.4545455
+
 
 ```
 
