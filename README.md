@@ -24,10 +24,8 @@ Chowdhury, S., Wang, R., Yu, Q. et al. DAGBagM: learning directed acyclic graphs
 This repository contains two folders. 
 
 dagbagM: 
-contains the R package "dagbagM" for learning directed acycic graphs for mixture of continuous and binary variables
+contains the R package "dagbagMv2" for learning directed acycic graphs for mixture of continuous and binary variables
 
-Simulation_scripts: 
-contains the R scripts for replicating the simulation results in the manuscript. (Notes: dagbag::score_shd is now replaced by dagbagM::score_shd. See Usage and Examples.)
 ```
 
 
