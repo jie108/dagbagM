@@ -422,6 +422,132 @@ bool acyclic_reverse(int from, int to, AdjList parents) {
   return !edge_on_loop_cpp(to, from, parents);
 }
 
+// BFS ancestor indicators for node i, including i itself.
+std::vector<char> compute_ancestors(int i, const AdjList& parents) {
+  const int p = static_cast<int>(parents.size());
+  std::vector<char> out(p, 0);
+  std::vector<int> queue;
+  queue.reserve(p);
+  out[i] = 1;
+  queue.push_back(i);
+  for (std::size_t pos = 0; pos < queue.size(); ++pos) {
+    const std::vector<int>& par = parents[queue[pos]];
+    for (std::size_t k = 0; k < par.size(); ++k) {
+      if (!out[par[k]]) {
+        out[par[k]] = 1;
+        queue.push_back(par[k]);
+      }
+    }
+  }
+  return out;
+}
+
+// BFS descendant indicators for node i, including i itself.
+std::vector<char> compute_descendants(int i, const AdjList& children) {
+  const int p = static_cast<int>(children.size());
+  std::vector<char> out(p, 0);
+  std::vector<int> queue;
+  queue.reserve(p);
+  out[i] = 1;
+  queue.push_back(i);
+  for (std::size_t pos = 0; pos < queue.size(); ++pos) {
+    const std::vector<int>& chd = children[queue[pos]];
+    for (std::size_t k = 0; k < chd.size(); ++k) {
+      if (!out[chd[k]]) {
+        out[chd[k]] = 1;
+        queue.push_back(chd[k]);
+      }
+    }
+  }
+  return out;
+}
+
+// Acyclicity check for reversing from->to without copying the full AdjList.
+// Uses erase+insert to preserve element order so that fill_design column
+// ordering is unaffected by the temporary removal.
+bool acyclic_reverse_inplace(int from, int to, AdjList& parents) {
+  std::vector<int>& toParents = parents[to];
+  const std::vector<int>::iterator it = std::find(toParents.begin(), toParents.end(), from);
+  if (it == toParents.end()) {
+    return false;
+  }
+  const std::ptrdiff_t pos = it - toParents.begin();
+  toParents.erase(it);
+  const bool result = !edge_on_loop_cpp(to, from, parents);
+  toParents.insert(toParents.begin() + pos, from);
+  return result;
+}
+
+// Incrementally update acyStatus for one candidate operation given the last
+// accepted operation and the pre-computed ancestor/descendant indicators for
+// its from/to nodes (computed on the post-operation graph).
+//
+// Convention:
+//   acyStatus(from, to) = true iff adding from->to is acyclic
+//   acyStatus(to, from) = true iff reversing from->to is acyclic
+//
+// operType: 1 = add, 3 = reverse. lastType: -1 = no prior accepted op.
+// Only reads/writes acyStatus for the given (operFrom, operTo) pair.
+// Mirrors the InterCellDAGv3 acyclicUpdate logic.
+void acyclic_cache_update(int lastFrom, int lastTo, int lastType,
+                          const std::vector<char>& lastFromAn,
+                          const std::vector<char>& lastFromDe,
+                          const std::vector<char>& lastToAn,
+                          const std::vector<char>& lastToDe,
+                          int operFrom, int operTo, int operType,
+                          AdjList& parents,
+                          Rcpp::LogicalMatrix& acyStatus) {
+  const int i = operFrom;
+  const int j = operTo;
+
+  if (lastType == 1) {
+    // Last op was add lastFrom->lastTo. Paths through the new edge can now
+    // create cycles for some previously-acyclic candidates.
+    if (operType == 1 && acyStatus(i,j) && lastToDe[i] && lastFromAn[j]) {
+      acyStatus(i,j) = false;
+    }
+    if (operType == 3 && acyStatus(j,i) && lastToDe[j] && lastFromAn[i]) {
+      if (i != lastFrom || j != lastTo) {
+        acyStatus(j,i) = false;
+      }
+    }
+  } else if (lastType == 2) {
+    // Last op was delete lastFrom->lastTo. Some previously-cyclic candidates
+    // may now be acyclic; re-check those.
+    if (operType == 1 && !acyStatus(i,j) && lastToDe[i] && lastFromAn[j]) {
+      acyStatus(i,j) = acyclic_add(i, j, parents) ? true : false;
+    }
+    if (operType == 3 && !acyStatus(j,i) && lastToDe[j] && lastFromAn[i]) {
+      acyStatus(j,i) = acyclic_reverse_inplace(i, j, parents) ? true : false;
+    }
+  } else if (lastType == 3) {
+    // Last op was reverse lastFrom->lastTo (= delete lastFrom->lastTo +
+    // add lastTo->lastFrom). Handles both sides of the reversal.
+    if (operType == 1 && acyStatus(i,j) && lastFromDe[i] && lastToAn[j]) {
+      acyStatus(i,j) = false;
+    }
+    if (operType == 1 && !acyStatus(i,j) && lastToDe[i] && lastFromAn[j]) {
+      acyStatus(i,j) = acyclic_add(i, j, parents) ? true : false;
+    }
+    if (operType == 3 && acyStatus(j,i) && lastFromDe[j] && lastToAn[i]) {
+      if (i != lastTo || j != lastFrom) {
+        acyStatus(j,i) = false;
+      }
+    }
+    if (operType == 3 && !acyStatus(j,i) && lastToDe[j] && lastFromAn[i]) {
+      acyStatus(j,i) = acyclic_reverse_inplace(i, j, parents) ? true : false;
+    }
+  } else {
+    // No prior accepted operation: compute from scratch.
+    if (operType == 1) {
+      acyStatus(i,j) = acyclic_add(i, j, parents) ? true : false;
+    }
+    if (operType == 3) {
+      acyStatus(j,i) = acyclic_reverse_inplace(i, j, parents) ? true : false;
+    }
+  }
+}
+
 void erase_value(std::vector<int>& x, int value, const char* context) {
   std::vector<int>::iterator it = std::find(x.begin(), x.end(), value);
   if (it == x.end()) {
@@ -622,6 +748,18 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
   Rcpp::NumericVector stepDelta;
   std::mt19937 rng(static_cast<unsigned int>(seed));
 
+  // Acyclicity status cache. NA_LOGICAL = not yet computed.
+  //   acyStatus(from, to) = true iff adding from->to is acyclic
+  //   acyStatus(to, from) = true iff reversing from->to is acyclic
+  Rcpp::LogicalMatrix acyStatus(p, p);
+  std::fill(acyStatus.begin(), acyStatus.end(), NA_LOGICAL);
+
+  // State for incremental acyStatus updates. Ancestor/descendant sets of the
+  // last accepted operation's from/to nodes, computed on the post-op graph.
+  int lastOperFrom = -1, lastOperTo = -1, lastOperType = -1;
+  std::vector<char> lastFromAn(p, 0), lastFromDe(p, 0);
+  std::vector<char> lastToAn(p, 0),   lastToDe(p, 0);
+
   int acceptedSteps = 0;
   while (acceptedSteps < maxStep) {
     // Each step scans all currently eligible add/delete/reverse candidates and
@@ -641,6 +779,9 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
         const int idx = mat_index(from, to, p);
 
         if (has_edge(graph, from, to, p)) {
+          // Existing edge: mark it acyclic so acyclic_cache_update has a valid
+          // baseline if it ever inspects this entry for a different candidate.
+          acyStatus(from, to) = true;
           if (has_edge(white, from, to, p)) {
             continue;
           }
@@ -673,40 +814,84 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
 
           // Reversing from -> to changes two local scores: to after deletion
           // and from after adding to as a parent. addDeleteOnly skips this block.
-          if (!addDeleteOnly && !has_edge(black, to, from, p) && acyclic_reverse(from, to, parents)) {
-            OneCache& rev = reverseCache[idx];
-            if (rev.versionA != version[to] || rev.versionB != version[from]) {
-              // Reuse del.scoreA: same computation, already fresh this iteration.
-              rev.scoreA = del.scoreA;
-              rev.scoreB = node_score(workspace, Y, types, parents, from, to, -1);
-              rev.value = (rev.scoreA - curScore[to]) + (rev.scoreB - curScore[from]);
-              rev.versionA = version[to];
-              rev.versionB = version[from];
+          if (!addDeleteOnly && !has_edge(black, to, from, p)) {
+            // Resolve reversal acyclicity from cache.
+            if (acyStatus(to, from) == NA_LOGICAL) {
+              acyStatus(to, from) = acyclic_reverse(from, to, parents) ? true : false;
+            } else {
+              acyclic_cache_update(lastOperFrom, lastOperTo, lastOperType,
+                                   lastFromAn, lastFromDe, lastToAn, lastToDe,
+                                   from, to, 3, parents, acyStatus);
+              if (acyStatus(to, from) == NA_LOGICAL) {
+                acyStatus(to, from) = acyclic_reverse(from, to, parents) ? true : false;
+              }
             }
             if (debug) {
-              const double recomputedScoreA = node_score(workspace, Y, types, parents, to, -1, from);
-              const double recomputedScoreB = node_score(workspace, Y, types, parents, from, to, -1);
-              const double recomputedDelta =
-                (recomputedScoreA - curScore[to]) + (recomputedScoreB - curScore[from]);
-              check_cached_delta("reverse", from, to,
-                                 rev.scoreA, recomputedScoreA,
-                                 rev.scoreB, recomputedScoreB,
-                                 rev.value, recomputedDelta);
+              const bool bfsResult = acyclic_reverse(from, to, parents);
+              if (bfsResult != static_cast<bool>(acyStatus(to, from))) {
+                Rcpp::stop("debug: acyStatus mismatch for reverse %d->%d: "
+                           "cache=%d actual=%d",
+                           from, to,
+                           static_cast<int>(static_cast<bool>(acyStatus(to, from))),
+                           static_cast<int>(bfsResult));
+              }
             }
-            if (verbose) {
-              Rcpp::Rcout << "reverse " << from << "->" << to << ": delta=" << rev.value << "\n";
-            }
-            if (better_delta(rev.value, bestDelta, tol, flip, rng)) {
-              bestDelta = rev.value;
-              bestScoreA = rev.scoreA;
-              bestScoreB = rev.scoreB;
-              bestFrom = from;
-              bestTo = to;
-              bestType = 3;
+            if (acyStatus(to, from)) {
+              OneCache& rev = reverseCache[idx];
+              if (rev.versionA != version[to] || rev.versionB != version[from]) {
+                // Reuse del.scoreA: same computation, already fresh this iteration.
+                rev.scoreA = del.scoreA;
+                rev.scoreB = node_score(workspace, Y, types, parents, from, to, -1);
+                rev.value = (rev.scoreA - curScore[to]) + (rev.scoreB - curScore[from]);
+                rev.versionA = version[to];
+                rev.versionB = version[from];
+              }
+              if (debug) {
+                const double recomputedScoreA = node_score(workspace, Y, types, parents, to, -1, from);
+                const double recomputedScoreB = node_score(workspace, Y, types, parents, from, to, -1);
+                const double recomputedDelta =
+                  (recomputedScoreA - curScore[to]) + (recomputedScoreB - curScore[from]);
+                check_cached_delta("reverse", from, to,
+                                   rev.scoreA, recomputedScoreA,
+                                   rev.scoreB, recomputedScoreB,
+                                   rev.value, recomputedDelta);
+              }
+              if (verbose) {
+                Rcpp::Rcout << "reverse " << from << "->" << to << ": delta=" << rev.value << "\n";
+              }
+              if (better_delta(rev.value, bestDelta, tol, flip, rng)) {
+                bestDelta = rev.value;
+                bestScoreA = rev.scoreA;
+                bestScoreB = rev.scoreB;
+                bestFrom = from;
+                bestTo = to;
+                bestType = 3;
+              }
             }
           }
         } else if (!has_edge(graph, to, from, p) && !has_edge(black, from, to, p)) {
-          if (!acyclic_add(from, to, parents)) {
+          // Resolve add acyclicity from cache.
+          if (acyStatus(from, to) == NA_LOGICAL) {
+            acyStatus(from, to) = acyclic_add(from, to, parents) ? true : false;
+          } else {
+            acyclic_cache_update(lastOperFrom, lastOperTo, lastOperType,
+                                 lastFromAn, lastFromDe, lastToAn, lastToDe,
+                                 from, to, 1, parents, acyStatus);
+            if (acyStatus(from, to) == NA_LOGICAL) {
+              acyStatus(from, to) = acyclic_add(from, to, parents) ? true : false;
+            }
+          }
+          if (debug) {
+            const bool bfsResult = acyclic_add(from, to, parents);
+            if (bfsResult != static_cast<bool>(acyStatus(from, to))) {
+              Rcpp::stop("debug: acyStatus mismatch for add %d->%d: "
+                         "cache=%d actual=%d",
+                         from, to,
+                         static_cast<int>(static_cast<bool>(acyStatus(from, to))),
+                         static_cast<int>(bfsResult));
+            }
+          }
+          if (!acyStatus(from, to)) {
             continue;
           }
 
@@ -779,6 +964,17 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
       curScore[bestFrom] = bestScoreB;
       ++version[bestFrom];
     }
+
+    // Update the last-operation state for incremental acyStatus propagation.
+    // Ancestor/descendant sets are computed on the post-operation graph so that
+    // acyclic_cache_update in the next step reasons about the updated topology.
+    lastOperFrom = bestFrom;
+    lastOperTo   = bestTo;
+    lastOperType = bestType;
+    lastFromAn = compute_ancestors(bestFrom, parents);
+    lastFromDe = compute_descendants(bestFrom, children);
+    lastToAn   = compute_ancestors(bestTo, parents);
+    lastToDe   = compute_descendants(bestTo, children);
 
     stepOper.push_back(Rcpp::IntegerVector::create(bestFrom, bestTo, bestType));
     stepDelta.push_back(bestDelta);
