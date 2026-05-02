@@ -153,7 +153,7 @@ hc <- function(Y, nodeType = NULL, whiteList = NULL, blackList = NULL,
   ## order and then map the learned adjacency back to the original order.
   p <- ncol(Y)
   n <- nrow(Y)
-  set.seed(i * 1001L + seed)
+  set.seed(i * 1001L + seed)  # space replicates by 1001 to reduce seed collisions
   s.pick <- sample.int(n, n, replace = TRUE)
 
   if (nodeShuffle) {
@@ -168,9 +168,10 @@ hc <- function(Y, nodeType = NULL, whiteList = NULL, blackList = NULL,
   node.B <- nodeType[node.rand]
   whiteList.B <- whiteList[node.rand, node.rand, drop = FALSE]
   blackList.B <- blackList[node.rand, node.rand, drop = FALSE]
-  curRes <- hc_(Y.B, node.B, whiteList.B, blackList.B, tol, maxStep,
-                restart, i * 11L + seed, verbose, debug, addDeleteOnly)
-  curRes$adjacency[node.index, node.index, drop = FALSE]
+  # HC seed uses spacing 11 (vs 1001 for bootstrap) to avoid seed overlap.
+  cur_res <- hc_(Y.B, node.B, whiteList.B, blackList.B, tol, maxStep,
+                 restart, i * 11L + seed, verbose, debug, addDeleteOnly)
+  cur_res$adjacency[node.index, node.index, drop = FALSE]
 }
 
 .format_boot_result <- function(result, p, n.boot, return) {
@@ -277,6 +278,8 @@ hc_boot_parallel <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
   result <- foreach::foreach(
     i = seq_len(n.boot),
     .errorhandling = "stop",
+    ## seed = TRUE suppresses doFuture's RNG warning; actual reproducibility
+    ## is controlled by the explicit set.seed() inside .fit_boot_one.
     .options.future = list(seed = TRUE, packages = "dagbagMv2")
   ) %dofuture% {
     .fit_boot_one(i, args$Y, args$nodeType, args$whiteList,

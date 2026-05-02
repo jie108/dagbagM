@@ -159,6 +159,9 @@ void validate_hc_inputs(const Rcpp::NumericMatrix& Y,
   if (n <= 0 || p <= 0) {
     Rcpp::stop("Y must have positive numbers of rows and columns");
   }
+  if (p > 46000) {
+    Rcpp::stop("p exceeds safe index limit (46000)");
+  }
   if (nodeType.size() != p) {
     Rcpp::stop("nodeType must have length equal to ncol(Y)");
   }
@@ -224,6 +227,9 @@ int fill_design(MatrixXd& workspace, const Rcpp::NumericMatrix& Y,
   const int n = Y.nrow();
   int col = 0;
   if (extraParent >= 0) {
+    if (std::find(parents.begin(), parents.end(), extraParent) != parents.end()) {
+      Rcpp::stop("fill_design: extraParent is already in the parent set (internal error)");
+    }
     workspace.col(col) = Eigen::Map<const VectorXd>(&Y(0, extraParent), n);
     ++col;
   }
@@ -449,16 +455,19 @@ Rcpp::IntegerMatrix wrap_int_graph(const std::vector<unsigned char>& graph, int 
 Rcpp::IntegerMatrix aggregate_freq_cpp(const Rcpp::NumericMatrix& seleFreq,
                                        double alpha,
                                        double freqCutoff,
-                                       const Rcpp::LogicalMatrix& whitelist,
-                                       const Rcpp::LogicalMatrix& blacklist,
+                                       const Rcpp::LogicalMatrix& whiteList,
+                                       const Rcpp::LogicalMatrix& blackList,
                                        bool verbose) {
   const int p = seleFreq.nrow();
   if (seleFreq.ncol() != p) {
     Rcpp::stop("freq must be a square matrix");
   }
-  if (whitelist.nrow() != p || whitelist.ncol() != p ||
-      blacklist.nrow() != p || blacklist.ncol() != p) {
-    Rcpp::stop("whitelist and blacklist must be p by p matrices");
+  if (p > 46000) {
+    Rcpp::stop("p exceeds safe index limit (46000)");
+  }
+  if (whiteList.nrow() != p || whiteList.ncol() != p ||
+      blackList.nrow() != p || blackList.ncol() != p) {
+    Rcpp::stop("whiteList and blackList must be p by p matrices");
   }
   if (!std::isfinite(alpha) || alpha <= 0.0) {
     Rcpp::stop("alpha must be a positive finite scalar");
@@ -467,19 +476,19 @@ Rcpp::IntegerMatrix aggregate_freq_cpp(const Rcpp::NumericMatrix& seleFreq,
     Rcpp::stop("freqCutoff must be a finite scalar in [0, 1]");
   }
 
-  std::vector<unsigned char> white = logical_matrix_to_graph(whitelist, "whitelist");
-  std::vector<unsigned char> black = logical_matrix_to_graph(blacklist, "blacklist");
+  std::vector<unsigned char> white = logical_matrix_to_graph(whiteList, "whiteList");
+  std::vector<unsigned char> black = logical_matrix_to_graph(blackList, "blackList");
   for (int i = 0; i < p; ++i) {
     set_edge(black, i, i, p, true);
     if (has_edge(white, i, i, p)) {
-      Rcpp::stop("whitelist diagonal must be FALSE");
+      Rcpp::stop("whiteList diagonal must be FALSE");
     }
     for (int j = 0; j < p; ++j) {
       if (has_edge(white, i, j, p) && has_edge(black, i, j, p)) {
-        Rcpp::stop("whitelist and blacklist conflict");
+        Rcpp::stop("whiteList and blackList conflict");
       }
       if (i != j && has_edge(white, i, j, p) && has_edge(white, j, i, p)) {
-        Rcpp::stop("whitelist cannot contain both directions of an edge");
+        Rcpp::stop("whiteList cannot contain both directions of an edge");
       }
       const double value = seleFreq(i, j);
       if (!std::isfinite(value) || value < 0.0 || value > 1.0) {
@@ -544,7 +553,6 @@ Rcpp::IntegerMatrix aggregate_freq_cpp(const Rcpp::NumericMatrix& seleFreq,
 
 } // namespace
 
-// [[Rcpp::export]]
 bool edgeOnLoop(int fromNode, int toNode, const Rcpp::List& parSet) {
   const int p = parSet.size();
   AdjList parents(p);
@@ -571,7 +579,6 @@ bool edgeOnLoop(int fromNode, int toNode, const Rcpp::List& parSet) {
 //   version[node] changes whenever that node's parent set changes.
 //   A cache entry is recomputed if its stored version stamp no longer matches.
 //   Missing cache entries start at -1, so the first eligible visit computes them.
-// [[Rcpp::export]]
 Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
                const Rcpp::CharacterVector& nodeType,
                const Rcpp::LogicalMatrix& whiteList,
@@ -810,6 +817,7 @@ Rcpp::List hc_(const Rcpp::NumericMatrix& Y,
   double bestScore = kInf;
   const bool flip = restart > 1;
   for (int i = 0; i < restart; ++i) {
+    // Space restart seeds by 101 to ensure independence across restarts.
     Rcpp::List curRes = hc1(Y, nodeType, whiteList, blackList, tol, maxStep,
                             seed + i * 101, flip, verbose, debug, addDeleteOnly);
     Rcpp::NumericVector curScoreVector = curRes["score"];
@@ -834,8 +842,8 @@ Rcpp::List hc_(const Rcpp::NumericMatrix& Y,
 Rcpp::IntegerMatrix score_shd_freq_cpp(const Rcpp::NumericMatrix& freq,
                                        double alpha,
                                        double freqCutoff,
-                                       const Rcpp::LogicalMatrix& whitelist,
-                                       const Rcpp::LogicalMatrix& blacklist,
+                                       const Rcpp::LogicalMatrix& whiteList,
+                                       const Rcpp::LogicalMatrix& blackList,
                                        bool verbose = false) {
   Rcpp::NumericMatrix cleanFreq = Rcpp::clone(freq);
   const int p = cleanFreq.nrow();
@@ -845,7 +853,7 @@ Rcpp::IntegerMatrix score_shd_freq_cpp(const Rcpp::NumericMatrix& freq,
   for (int i = 0; i < p; ++i) {
     cleanFreq(i, i) = 0.0;
   }
-  return aggregate_freq_cpp(cleanFreq, alpha, freqCutoff, whitelist, blacklist, verbose);
+  return aggregate_freq_cpp(cleanFreq, alpha, freqCutoff, whiteList, blackList, verbose);
 }
 
 // Aggregate from a p x p x B bootstrap adjacency array by first computing edge
@@ -854,8 +862,8 @@ Rcpp::IntegerMatrix score_shd_freq_cpp(const Rcpp::NumericMatrix& freq,
 Rcpp::IntegerMatrix score_shd_cpp(const Rcpp::NumericVector& bootAdj,
                                   double alpha,
                                   double freqCutoff,
-                                  const Rcpp::LogicalMatrix& whitelist,
-                                  const Rcpp::LogicalMatrix& blacklist,
+                                  const Rcpp::LogicalMatrix& whiteList,
+                                  const Rcpp::LogicalMatrix& blackList,
                                   bool verbose = false) {
   Rcpp::IntegerVector dims = bootAdj.attr("dim");
   if (dims.size() != 3) {
@@ -884,7 +892,7 @@ Rcpp::IntegerMatrix score_shd_cpp(const Rcpp::NumericVector& bootAdj,
   for (int i = 0; i < p; ++i) {
     freq(i, i) = 0.0;
   }
-  return aggregate_freq_cpp(freq, alpha, freqCutoff, whitelist, blacklist, verbose);
+  return aggregate_freq_cpp(freq, alpha, freqCutoff, whiteList, blackList, verbose);
 }
 
 #pragma GCC diagnostic pop

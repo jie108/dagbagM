@@ -1,38 +1,27 @@
 cal_order <- function(adj_matrix) {
-  p <- nrow(adj_matrix)
   if (nrow(adj_matrix) != ncol(adj_matrix)) {
     stop("adjacency matrix is not square matrix!")
   }
+  p <- nrow(adj_matrix)
+  in_degree <- colSums(adj_matrix != 0)
+  queue <- which(in_degree == 0)
+  node_order <- integer(0)
 
-  node_order <- NULL
-  ind_p <- numeric(p)
-
-  csums <- colSums(adj_matrix)
-  npar_index <- which(csums == 0)
-  hpar_index <- which(csums != 0)
-  ind_p[npar_index] <- 1
-
-  node_order <- c(node_order, npar_index)
-  current <- hpar_index
-  iter <- 0L
-  max_iter <- p * p
-  while (length(current) > 0) {
-    iter <- iter + 1L
-    if (iter > max_iter) {
-      stop("adj_matrix contains a cycle; topological order does not exist")
-    }
-    j <- current[1]
-    par_index <- which(adj_matrix[, j] == 1)
-    if (all(ind_p[par_index] == 1)) {
-      node_order <- c(node_order, j)
-      current <- current[-1]
-      ind_p[j] <- 1
-    } else {
-      current <- current[-1]
-      current <- c(current, j)
+  while (length(queue) > 0) {
+    node <- queue[1L]
+    queue <- queue[-1L]
+    node_order <- c(node_order, node)
+    for (child in which(adj_matrix[node, ] != 0)) {
+      in_degree[child] <- in_degree[child] - 1L
+      if (in_degree[child] == 0L) {
+        queue <- c(queue, child)
+      }
     }
   }
 
+  if (length(node_order) != p) {
+    stop("adj_matrix contains a cycle; topological order does not exist")
+  }
   node_order
 }
 
