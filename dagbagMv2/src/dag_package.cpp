@@ -448,7 +448,7 @@ Rcpp::IntegerMatrix wrap_int_graph(const std::vector<unsigned char>& graph, int 
 // Candidate edges are sorted deterministically before the greedy acyclic pass.
 Rcpp::IntegerMatrix aggregate_freq_cpp(const Rcpp::NumericMatrix& seleFreq,
                                        double alpha,
-                                       double threshold,
+                                       double freqCutoff,
                                        const Rcpp::LogicalMatrix& whitelist,
                                        const Rcpp::LogicalMatrix& blacklist,
                                        bool verbose) {
@@ -463,8 +463,8 @@ Rcpp::IntegerMatrix aggregate_freq_cpp(const Rcpp::NumericMatrix& seleFreq,
   if (!std::isfinite(alpha) || alpha <= 0.0) {
     Rcpp::stop("alpha must be a positive finite scalar");
   }
-  if (!std::isfinite(threshold) || threshold < -1.0 || threshold > 1.0) {
-    Rcpp::stop("threshold must be a finite scalar in [-1, 1]");
+  if (!std::isfinite(freqCutoff) || freqCutoff < 0.0 || freqCutoff > 1.0) {
+    Rcpp::stop("freqCutoff must be a finite scalar in [0, 1]");
   }
 
   std::vector<unsigned char> white = logical_matrix_to_graph(whitelist, "whitelist");
@@ -493,7 +493,6 @@ Rcpp::IntegerMatrix aggregate_freq_cpp(const Rcpp::NumericMatrix& seleFreq,
 
   std::vector<EdgeCandidate> candidates;
   candidates.reserve(p * p);
-  const double freqCut = (1.0 - threshold) / 2.0;
   for (int to = 0; to < p; ++to) {
     for (int from = 0; from < p; ++from) {
       if (from == to) {
@@ -501,7 +500,7 @@ Rcpp::IntegerMatrix aggregate_freq_cpp(const Rcpp::NumericMatrix& seleFreq,
       }
       const double sf = seleFreq(from, to);
       const double gsf = sf + (1.0 - alpha / 2.0) * seleFreq(to, from);
-      if (gsf > freqCut) {
+      if (gsf > freqCutoff) {
         EdgeCandidate candidate;
         candidate.from = from;
         candidate.to = to;
@@ -834,7 +833,7 @@ Rcpp::List hc_(const Rcpp::NumericMatrix& Y,
 // [[Rcpp::export]]
 Rcpp::IntegerMatrix score_shd_freq_cpp(const Rcpp::NumericMatrix& freq,
                                        double alpha,
-                                       double threshold,
+                                       double freqCutoff,
                                        const Rcpp::LogicalMatrix& whitelist,
                                        const Rcpp::LogicalMatrix& blacklist,
                                        bool verbose = false) {
@@ -846,7 +845,7 @@ Rcpp::IntegerMatrix score_shd_freq_cpp(const Rcpp::NumericMatrix& freq,
   for (int i = 0; i < p; ++i) {
     cleanFreq(i, i) = 0.0;
   }
-  return aggregate_freq_cpp(cleanFreq, alpha, threshold, whitelist, blacklist, verbose);
+  return aggregate_freq_cpp(cleanFreq, alpha, freqCutoff, whitelist, blacklist, verbose);
 }
 
 // Aggregate from a p x p x B bootstrap adjacency array by first computing edge
@@ -854,7 +853,7 @@ Rcpp::IntegerMatrix score_shd_freq_cpp(const Rcpp::NumericMatrix& freq,
 // [[Rcpp::export]]
 Rcpp::IntegerMatrix score_shd_cpp(const Rcpp::NumericVector& bootAdj,
                                   double alpha,
-                                  double threshold,
+                                  double freqCutoff,
                                   const Rcpp::LogicalMatrix& whitelist,
                                   const Rcpp::LogicalMatrix& blacklist,
                                   bool verbose = false) {
@@ -885,7 +884,7 @@ Rcpp::IntegerMatrix score_shd_cpp(const Rcpp::NumericVector& bootAdj,
   for (int i = 0; i < p; ++i) {
     freq(i, i) = 0.0;
   }
-  return aggregate_freq_cpp(freq, alpha, threshold, whitelist, blacklist, verbose);
+  return aggregate_freq_cpp(freq, alpha, freqCutoff, whitelist, blacklist, verbose);
 }
 
 #pragma GCC diagnostic pop

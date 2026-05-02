@@ -35,10 +35,10 @@ hc_boot_parallel(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
                  addDeleteOnly = FALSE,
                  return = c("array", "freq", "both"))
 
-score_shd(boot.adj, alpha = 1, threshold = 0, whiteList = NULL,
+score_shd(boot.adj, alpha = 1, freqCutoff = 0.5, whiteList = NULL,
           blackList = NULL, maxStep = NULL, verbose = FALSE)
 
-score_shd_freq(freq, alpha = 1, threshold = 0, whiteList = NULL,
+score_shd_freq(freq, alpha = 1, freqCutoff = 0.5, whiteList = NULL,
                blackList = NULL, maxStep = NULL, verbose = FALSE)
 }
 \arguments{
@@ -63,7 +63,9 @@ score_shd_freq(freq, alpha = 1, threshold = 0, whiteList = NULL,
 \item{boot.adj}{A \code{p by p by B} array of bootstrap DAGs.}
 \item{freq}{A \code{p by p} edge selection frequency matrix.}
 \item{alpha}{Generalized SHD reversal weight parameter.}
-\item{threshold}{Frequency cutoff adjustment.}
+\item{freqCutoff}{Edge selection frequency cutoff in [0, 1]; edges with
+generalized selection frequency above this value are candidates for
+inclusion. Default 0.5 corresponds to majority-vote selection.}
 }
 \value{
 \code{hc} returns a list with adjacency, node scores, operations, deltas, and

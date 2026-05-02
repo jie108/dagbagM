@@ -13,11 +13,11 @@ hc_ <- function(Y, nodeType, whiteList, blackList, tol = 1e-6, maxStep = 500L, r
     .Call(`_dagbagMv2_hc_`, Y, nodeType, whiteList, blackList, tol, maxStep, restart, seed, verbose, debug, addDeleteOnly)
 }
 
-score_shd_freq_cpp <- function(freq, alpha, threshold, whitelist, blacklist, verbose = FALSE) {
-    .Call(`_dagbagMv2_score_shd_freq_cpp`, freq, alpha, threshold, whitelist, blacklist, verbose)
+score_shd_freq_cpp <- function(freq, alpha, freqCutoff, whitelist, blacklist, verbose = FALSE) {
+    .Call(`_dagbagMv2_score_shd_freq_cpp`, freq, alpha, freqCutoff, whitelist, blacklist, verbose)
 }
 
-score_shd_cpp <- function(bootAdj, alpha, threshold, whitelist, blacklist, verbose = FALSE) {
-    .Call(`_dagbagMv2_score_shd_cpp`, bootAdj, alpha, threshold, whitelist, blacklist, verbose)
+score_shd_cpp <- function(bootAdj, alpha, freqCutoff, whitelist, blacklist, verbose = FALSE) {
+    .Call(`_dagbagMv2_score_shd_cpp`, bootAdj, alpha, freqCutoff, whitelist, blacklist, verbose)
 }
 

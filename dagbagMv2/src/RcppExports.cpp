@@ -67,14 +67,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // score_shd_freq_cpp
-Rcpp::IntegerMatrix score_shd_freq_cpp(const Rcpp::NumericMatrix& freq, double alpha, double threshold, const Rcpp::LogicalMatrix& whitelist, const Rcpp::LogicalMatrix& blacklist, bool verbose);
-RcppExport SEXP _dagbagMv2_score_shd_freq_cpp(SEXP freqSEXP, SEXP alphaSEXP, SEXP thresholdSEXP, SEXP whitelistSEXP, SEXP blacklistSEXP, SEXP verboseSEXP) {
+Rcpp::IntegerMatrix score_shd_freq_cpp(const Rcpp::NumericMatrix& freq, double alpha, double freqCutoff, const Rcpp::LogicalMatrix& whitelist, const Rcpp::LogicalMatrix& blacklist, bool verbose);
+RcppExport SEXP _dagbagMv2_score_shd_freq_cpp(SEXP freqSEXP, SEXP alphaSEXP, SEXP freqCutoffSEXP, SEXP whitelistSEXP, SEXP blacklistSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type freq(freqSEXP);
     Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< double >::type threshold(thresholdSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold(freqCutoffSEXP);
     Rcpp::traits::input_parameter< const Rcpp::LogicalMatrix& >::type whitelist(whitelistSEXP);
     Rcpp::traits::input_parameter< const Rcpp::LogicalMatrix& >::type blacklist(blacklistSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
@@ -83,14 +83,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // score_shd_cpp
-Rcpp::IntegerMatrix score_shd_cpp(const Rcpp::NumericVector& bootAdj, double alpha, double threshold, const Rcpp::LogicalMatrix& whitelist, const Rcpp::LogicalMatrix& blacklist, bool verbose);
-RcppExport SEXP _dagbagMv2_score_shd_cpp(SEXP bootAdjSEXP, SEXP alphaSEXP, SEXP thresholdSEXP, SEXP whitelistSEXP, SEXP blacklistSEXP, SEXP verboseSEXP) {
+Rcpp::IntegerMatrix score_shd_cpp(const Rcpp::NumericVector& bootAdj, double alpha, double freqCutoff, const Rcpp::LogicalMatrix& whitelist, const Rcpp::LogicalMatrix& blacklist, bool verbose);
+RcppExport SEXP _dagbagMv2_score_shd_cpp(SEXP bootAdjSEXP, SEXP alphaSEXP, SEXP freqCutoffSEXP, SEXP whitelistSEXP, SEXP blacklistSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type bootAdj(bootAdjSEXP);
     Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< double >::type threshold(thresholdSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold(freqCutoffSEXP);
     Rcpp::traits::input_parameter< const Rcpp::LogicalMatrix& >::type whitelist(whitelistSEXP);
     Rcpp::traits::input_parameter< const Rcpp::LogicalMatrix& >::type blacklist(blacklistSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);

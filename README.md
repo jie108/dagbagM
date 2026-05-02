@@ -66,10 +66,10 @@ dagbagMv2::hc_boot_parallel(Y, n.boot, nodeType, whiteList, blackList, standardi
                             addDeleteOnly, return)
 
 score_shd: Aggregate an ensemble of DAGs using generalized structural hamming distance.
-dagbagMv2::score_shd(boot.adj, alpha, threshold, whiteList, blackList, maxStep, verbose)
+dagbagMv2::score_shd(boot.adj, alpha, freqCutoff, whiteList, blackList, maxStep, verbose)
 
 score_shd_freq: Aggregate from an edge frequency matrix using generalized structural hamming distance.
-dagbagMv2::score_shd_freq(freq, alpha, threshold, whiteList, blackList, maxStep, verbose)
+dagbagMv2::score_shd_freq(freq, alpha, freqCutoff, whiteList, blackList, maxStep, verbose)
 ```
 
 
@@ -104,7 +104,7 @@ dagbagMv2::score_shd_freq(freq, alpha, threshold, whiteList, blackList, maxStep,
 | boot.adj (score_shd only) | | a p by p by B array of bootstrap DAG adjacency matrices |
 | freq (score_shd_freq only) | | a p by p edge selection frequency matrix |
 | alpha | 1 | a positive scalar: controls the gSHD family member used for aggregation; larger alpha retains fewer edges (lower FDR, less power) |
-| threshold | 0 | a scalar: defines the frequency cutoff (=(1-threshold)/2); 0 corresponds to cutoff 0.5 |
+| freqCutoff | 0.5 | a scalar in [0, 1]: edge selection frequency cutoff; edges with generalized selection frequency above this value are candidates for inclusion. Default 0.5 corresponds to majority-vote selection |
 | whiteList | NULL | a p by p logical or 0-1 matrix: if the (i,j)th-entry is TRUE/1, the edge i-->j will always be included |
 | blackList | NULL | a p by p logical or 0-1 matrix: if the (i,j)th-entry is TRUE/1, the edge i-->j will be excluded |
 | maxStep | NULL | deprecated legacy parameter with no effect |
@@ -183,8 +183,8 @@ library(foreach)
 library(doFuture)
 boot.adj<- dagbagMv2::hc_boot_parallel(Y=Y.n, n.boot=50, nodeType=rep("c",p), whiteList=NULL, blackList=NULL, standardize=TRUE, tol = 1e-6, maxStep = 1000, restart=1, seed = 1,  nodeShuffle=TRUE, numThread = 2, return="array", verbose = FALSE)
 
-#(iii) Bootstrap aggregation of DAGs learnt from bootstrap resamples: threshold=0 corresponds to 50% selection freq. cutoff
-adj.bag=dagbagMv2::score_shd(boot.adj, alpha = 1, threshold=0) 
+#(iii) Bootstrap aggregation of DAGs learnt from bootstrap resamples: freqCutoff=0.5 corresponds to 50% selection freq. cutoff
+adj.bag=dagbagMv2::score_shd(boot.adj, alpha = 1, freqCutoff=0.5) 
 
 #(iv) Evaluations
 ## results on DAG estimation
