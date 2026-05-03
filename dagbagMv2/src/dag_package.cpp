@@ -260,7 +260,7 @@ double continuous_loglik(const ConstMatRef& X, const ConstVecRef& Y) {
     return -kInf;
   }
   const VectorXd beta = llt.solve(X.adjoint() * Y);
-  if (llt.info() != Eigen::Success || !beta.allFinite()) {
+  if (!beta.allFinite()) {
     return -kInf;
   }
   const VectorXd resid = Y - X * beta;
@@ -478,72 +478,78 @@ bool acyclic_reverse_inplace(int from, int to, AdjList& parents) {
   return result;
 }
 
+// State of the last accepted HC operation, including BFS ancestor/descendant
+// indicators computed on the post-operation graph. Default-constructed to
+// type==-1 meaning no operation has been accepted yet.
+struct LastOpState {
+  int from = -1, to = -1, type = -1;
+  std::vector<char> fromAn, fromDe, toAn, toDe;
+};
+
 // Incrementally update acyStatus for one candidate operation given the last
-// accepted operation and the pre-computed ancestor/descendant indicators for
-// its from/to nodes (computed on the post-operation graph).
+// accepted operation.
 //
 // Convention:
 //   acyStatus(from, to) = true iff adding from->to is acyclic
 //   acyStatus(to, from) = true iff reversing from->to is acyclic
 //
-// operType: 1 = add, 3 = reverse. lastType: -1 = no prior accepted op.
+// operType: 1 = add, 3 = reverse.
 // Only reads/writes acyStatus for the given (operFrom, operTo) pair.
 // Mirrors the InterCellDAGv3 acyclicUpdate logic.
-void acyclic_cache_update(int lastFrom, int lastTo, int lastType,
-                          const std::vector<char>& lastFromAn,
-                          const std::vector<char>& lastFromDe,
-                          const std::vector<char>& lastToAn,
-                          const std::vector<char>& lastToDe,
+void acyclic_cache_update(const LastOpState& last,
                           int operFrom, int operTo, int operType,
                           AdjList& parents,
                           Rcpp::LogicalMatrix& acyStatus) {
   const int i = operFrom;
   const int j = operTo;
 
-  if (lastType == 1) {
-    // Last op was add lastFrom->lastTo. Paths through the new edge can now
+  if (last.type == 1) {
+    // Last op was add last.from->last.to. Paths through the new edge can now
     // create cycles for some previously-acyclic candidates.
-    if (operType == 1 && acyStatus(i,j) && lastToDe[i] && lastFromAn[j]) {
+    if (operType == 1 && acyStatus(i,j) && last.toDe[i] && last.fromAn[j]) {
       acyStatus(i,j) = false;
     }
-    if (operType == 3 && acyStatus(j,i) && lastToDe[j] && lastFromAn[i]) {
-      if (i != lastFrom || j != lastTo) {
+    if (operType == 3 && acyStatus(j,i) && last.toDe[j] && last.fromAn[i]) {
+      if (i != last.from || j != last.to) {
         acyStatus(j,i) = false;
       }
     }
-  } else if (lastType == 2) {
-    // Last op was delete lastFrom->lastTo. Some previously-cyclic candidates
+  } else if (last.type == 2) {
+    // Last op was delete last.from->last.to. Some previously-cyclic candidates
     // may now be acyclic; re-check those.
-    if (operType == 1 && !acyStatus(i,j) && lastToDe[i] && lastFromAn[j]) {
+    if (operType == 1 && !acyStatus(i,j) && last.toDe[i] && last.fromAn[j]) {
       acyStatus(i,j) = acyclic_add(i, j, parents) ? true : false;
     }
-    if (operType == 3 && !acyStatus(j,i) && lastToDe[j] && lastFromAn[i]) {
-      acyStatus(j,i) = acyclic_reverse_inplace(i, j, parents) ? true : false;
-    }
-  } else if (lastType == 3) {
-    // Last op was reverse lastFrom->lastTo (= delete lastFrom->lastTo +
-    // add lastTo->lastFrom). Handles both sides of the reversal.
-    if (operType == 1 && acyStatus(i,j) && lastFromDe[i] && lastToAn[j]) {
-      acyStatus(i,j) = false;
-    }
-    if (operType == 1 && !acyStatus(i,j) && lastToDe[i] && lastFromAn[j]) {
-      acyStatus(i,j) = acyclic_add(i, j, parents) ? true : false;
-    }
-    if (operType == 3 && acyStatus(j,i) && lastFromDe[j] && lastToAn[i]) {
-      if (i != lastTo || j != lastFrom) {
-        acyStatus(j,i) = false;
-      }
-    }
-    if (operType == 3 && !acyStatus(j,i) && lastToDe[j] && lastFromAn[i]) {
+    if (operType == 3 && !acyStatus(j,i) && last.toDe[j] && last.fromAn[i]) {
       acyStatus(j,i) = acyclic_reverse_inplace(i, j, parents) ? true : false;
     }
   } else {
-    // No prior accepted operation: compute from scratch.
+    // Last op was reverse last.from->last.to (= delete last.from->last.to +
+    // add last.to->last.from). The reverse both creates new cycle paths and
+    // removes old ones; handle both effects per candidate.
     if (operType == 1) {
-      acyStatus(i,j) = acyclic_add(i, j, parents) ? true : false;
+      if (acyStatus(i,j) && last.fromDe[i] && last.toAn[j]) {
+        // New edge last.to->last.from may create a cycle for this add.
+        // If the deleted edge also affected this pair, BFS is authoritative.
+        if (last.toDe[i] && last.fromAn[j])
+          acyStatus(i,j) = acyclic_add(i, j, parents) ? true : false;
+        else
+          acyStatus(i,j) = false;
+      } else if (!acyStatus(i,j) && last.toDe[i] && last.fromAn[j]) {
+        // Deleted edge may have freed this add; re-check.
+        acyStatus(i,j) = acyclic_add(i, j, parents) ? true : false;
+      }
     }
     if (operType == 3) {
-      acyStatus(j,i) = acyclic_reverse_inplace(i, j, parents) ? true : false;
+      const bool isReversedEdge = (i == last.to && j == last.from);
+      if (!isReversedEdge && acyStatus(j,i) && last.fromDe[j] && last.toAn[i]) {
+        if (last.toDe[j] && last.fromAn[i])
+          acyStatus(j,i) = acyclic_reverse_inplace(i, j, parents) ? true : false;
+        else
+          acyStatus(j,i) = false;
+      } else if (!acyStatus(j,i) && last.toDe[j] && last.fromAn[i]) {
+        acyStatus(j,i) = acyclic_reverse_inplace(i, j, parents) ? true : false;
+      }
     }
   }
 }
@@ -756,9 +762,7 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
 
   // State for incremental acyStatus updates. Ancestor/descendant sets of the
   // last accepted operation's from/to nodes, computed on the post-op graph.
-  int lastOperFrom = -1, lastOperTo = -1, lastOperType = -1;
-  std::vector<char> lastFromAn(p, 0), lastFromDe(p, 0);
-  std::vector<char> lastToAn(p, 0),   lastToDe(p, 0);
+  LastOpState lastOp;
 
   int acceptedSteps = 0;
   while (acceptedSteps < maxStep) {
@@ -779,9 +783,8 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
         const int idx = mat_index(from, to, p);
 
         if (has_edge(graph, from, to, p)) {
-          // Existing edge: mark it acyclic so acyclic_cache_update has a valid
-          // baseline if it ever inspects this entry for a different candidate.
-          acyStatus(from, to) = true;
+          // Existing edges are acyclic by invariant; set once on first encounter.
+          if (acyStatus(from, to) != true) acyStatus(from, to) = true;
           if (has_edge(white, from, to, p)) {
             continue;
           }
@@ -817,13 +820,11 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
           if (!addDeleteOnly && !has_edge(black, to, from, p)) {
             // Resolve reversal acyclicity from cache.
             if (acyStatus(to, from) == NA_LOGICAL) {
-              acyStatus(to, from) = acyclic_reverse(from, to, parents) ? true : false;
+              acyStatus(to, from) = acyclic_reverse_inplace(from, to, parents) ? true : false;
             } else {
-              acyclic_cache_update(lastOperFrom, lastOperTo, lastOperType,
-                                   lastFromAn, lastFromDe, lastToAn, lastToDe,
-                                   from, to, 3, parents, acyStatus);
+              acyclic_cache_update(lastOp, from, to, 3, parents, acyStatus);
               if (acyStatus(to, from) == NA_LOGICAL) {
-                acyStatus(to, from) = acyclic_reverse(from, to, parents) ? true : false;
+                acyStatus(to, from) = acyclic_reverse_inplace(from, to, parents) ? true : false;
               }
             }
             if (debug) {
@@ -874,9 +875,7 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
           if (acyStatus(from, to) == NA_LOGICAL) {
             acyStatus(from, to) = acyclic_add(from, to, parents) ? true : false;
           } else {
-            acyclic_cache_update(lastOperFrom, lastOperTo, lastOperType,
-                                 lastFromAn, lastFromDe, lastToAn, lastToDe,
-                                 from, to, 1, parents, acyStatus);
+            acyclic_cache_update(lastOp, from, to, 1, parents, acyStatus);
             if (acyStatus(from, to) == NA_LOGICAL) {
               acyStatus(from, to) = acyclic_add(from, to, parents) ? true : false;
             }
@@ -968,13 +967,13 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
     // Update the last-operation state for incremental acyStatus propagation.
     // Ancestor/descendant sets are computed on the post-operation graph so that
     // acyclic_cache_update in the next step reasons about the updated topology.
-    lastOperFrom = bestFrom;
-    lastOperTo   = bestTo;
-    lastOperType = bestType;
-    lastFromAn = compute_ancestors(bestFrom, parents);
-    lastFromDe = compute_descendants(bestFrom, children);
-    lastToAn   = compute_ancestors(bestTo, parents);
-    lastToDe   = compute_descendants(bestTo, children);
+    lastOp.from  = bestFrom;
+    lastOp.to    = bestTo;
+    lastOp.type  = bestType;
+    lastOp.fromAn = compute_ancestors(bestFrom, parents);
+    lastOp.fromDe = compute_descendants(bestFrom, children);
+    lastOp.toAn   = compute_ancestors(bestTo, parents);
+    lastOp.toDe   = compute_descendants(bestTo, children);
 
     stepOper.push_back(Rcpp::IntegerVector::create(bestFrom, bestTo, bestType));
     stepDelta.push_back(bestDelta);
