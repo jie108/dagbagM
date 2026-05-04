@@ -51,7 +51,7 @@ install_github("jie108/dagbagM",subdir="dagbagMv2", lib = "~/R_libs")
 
 ```
 hc: Learn a DAG model by hill climbing for mixture of continuous and binary variables.
-dagbagMv2::hc(Y, nodeType, whiteList, blackList, tol, standardize, maxStep, restart, seed,
+dagbagMv2::hc(Y, nodeType, whiteList, blackList, standardize, tol, maxStep, restart, seed,
               verbose, debug, addDeleteOnly)
 
 hc_boot: Learn a DAG model for every bootstrap resample. Supports sequential and
