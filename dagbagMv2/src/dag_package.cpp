@@ -1139,6 +1139,10 @@ Rcpp::IntegerMatrix score_shd_cpp(const Rcpp::NumericVector& bootAdj,
 
   Rcpp::NumericMatrix freq(p, p);
   const int sliceSize = p * p;
+  // Sum counts first, then divide once — matches hc_boot(output_type="freq")
+  // so that score_shd(array) and score_shd_freq(freq) give identical results.
+  // Dividing each 0/1 value by nb before accumulating would introduce rounding
+  // error proportional to nb, potentially flipping a borderline gsf comparison.
   for (int b = 0; b < nb; ++b) {
     for (int to = 0; to < p; ++to) {
       for (int from = 0; from < p; ++from) {
@@ -1146,11 +1150,15 @@ Rcpp::IntegerMatrix score_shd_cpp(const Rcpp::NumericVector& bootAdj,
         if (!std::isfinite(value) || (value != 0.0 && value != 1.0)) {
           Rcpp::stop("boot.adj entries must be finite 0/1 values");
         }
-        freq(from, to) += value / static_cast<double>(nb);
+        freq(from, to) += value;
       }
     }
   }
+  const double nb_d = static_cast<double>(nb);
   for (int i = 0; i < p; ++i) {
+    for (int j = 0; j < p; ++j) {
+      freq(i, j) /= nb_d;
+    }
     freq(i, i) = 0.0;
   }
   return aggregate_freq_cpp(freq, alpha, freqCutoff, whiteList, blackList, verbose);

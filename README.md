@@ -192,25 +192,25 @@ adj.bag <- dagbagMv2::score_shd(boot.adj, alpha = 1, freq.cutoff = 0.5)
 
 # (iv) Evaluations
 ## results on DAG estimation
-sum(adj.bag==1 & true.dir==0) / sum(adj.bag==1)  ## FDR:   0.4
-sum(adj.bag==1 & true.dir==1) / sum(true.dir==1) ## Power: 0.6330275
+sum(adj.bag==1 & true.dir==0) / sum(adj.bag==1)  ## FDR:   0.4035088
+sum(adj.bag==1 & true.dir==1) / sum(true.dir==1) ## Power: 0.6238532
 
 ## results on skeleton graph estimation
 adj.bag.ske <- skeleton(adj.bag)
-sum(adj.bag.ske==1 & true.ske==0) / sum(adj.bag.ske==1)  ## FDR:   0.2173913
-sum(adj.bag.ske==1 & true.ske==1) / sum(true.ske==1)     ## Power: 0.8256881
+sum(adj.bag.ske==1 & true.ske==0) / sum(adj.bag.ske==1)  ## FDR:   0.2192982
+sum(adj.bag.ske==1 & true.ske==1) / sum(true.ske==1)     ## Power: 0.8165138
 
 ## results on moral graph estimation
 adj.bag.moral <- moral_graph(adj.bag)
-sum(adj.bag.moral==1 & true.moral==0) / sum(adj.bag.moral==1)  ## FDR:   0.3105263
-sum(adj.bag.moral==1 & true.moral==1) / sum(true.moral==1)     ## Power: 0.7119565
+sum(adj.bag.moral==1 & true.moral==0) / sum(adj.bag.moral==1)  ## FDR:   0.315508
+sum(adj.bag.moral==1 & true.moral==1) / sum(true.moral==1)     ## Power: 0.6956522
 
 ## results on v-structure estimation
 adj.bag.vstr <- vstructures(adj.bag)
 vstr.corr    <- compare.vstructures(target.vstructures = adj.bag.vstr,
                                     true.vstructures   = true.vstr)
-1 - nrow(vstr.corr) / nrow(adj.bag.vstr)  ## FDR:   0.4868421
-nrow(vstr.corr) / nrow(true.vstr)         ## Power: 0.5064935
+1 - nrow(vstr.corr) / nrow(adj.bag.vstr)  ## FDR:   0.5
+nrow(vstr.corr) / nrow(true.vstr)         ## Power: 0.4805195
 ```
 
 ## Contributions
