@@ -696,7 +696,7 @@ Rcpp::IntegerMatrix aggregate_freq_cpp(const Rcpp::NumericMatrix& seleFreq,
     }
   }
   if (!is_dag(white, p)) {
-    Rcpp::stop("whitelist must be acyclic");
+    Rcpp::stop("whiteList must be acyclic");
   }
 
   std::vector<EdgeCandidate> candidates;
@@ -752,21 +752,6 @@ Rcpp::IntegerMatrix aggregate_freq_cpp(const Rcpp::NumericMatrix& seleFreq,
 
 } // namespace
 
-bool edgeOnLoop(int fromNode, int toNode, const Rcpp::List& parSet) {
-  const int p = parSet.size();
-  AdjList parents(p);
-  for (int i = 0; i < p; ++i) {
-    Rcpp::IntegerVector cur = parSet[i];
-    parents[i].reserve(cur.size());
-    for (int k = 0; k < cur.size(); ++k) {
-      const int parent = cur[k];
-      require_index(parent, p, "parent");
-      parents[i].push_back(parent);
-    }
-  }
-  return edge_on_loop_cpp(fromNode, toNode, parents);
-}
-
 // Run one hill-climbing search from the whitelist-initialized graph.
 //
 // Operation types in the returned trace:
@@ -812,8 +797,8 @@ Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
     types[i] = Rcpp::as<std::string>(nodeType[i]);
   }
 
-  std::vector<unsigned char> graph = logical_matrix_to_graph(whiteList, "whiteList");
   const std::vector<unsigned char> white = logical_matrix_to_graph(whiteList, "whiteList");
+  std::vector<unsigned char> graph = white;
   const std::vector<unsigned char> black = logical_matrix_to_graph(blackList, "blackList");
   AdjList parents = graph_to_parents(graph, p);
   AdjList children = graph_to_children(graph, p);

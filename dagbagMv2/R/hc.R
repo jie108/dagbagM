@@ -282,12 +282,11 @@ hc_boot <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
       is.na(workers) || workers < 1)) {
     stop("workers must be NULL or a positive integer")
   }
-  if (!is.logical(addDeleteOnly) || length(addDeleteOnly) != 1L || is.na(addDeleteOnly)) {
-    stop("addDeleteOnly must be TRUE or FALSE")
-  }
-
   if (!is.logical(standardize) || length(standardize) != 1L || is.na(standardize)) {
     stop("standardize must be TRUE or FALSE")
+  }
+  if (!is.logical(addDeleteOnly) || length(addDeleteOnly) != 1L || is.na(addDeleteOnly)) {
+    stop("addDeleteOnly must be TRUE or FALSE")
   }
   args <- .validate_hc_inputs(Y, nodeType, whiteList, blackList,
                               tol, maxStep, restart, seed)
@@ -366,6 +365,121 @@ hc_boot <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
       future::future(run_one(b), seed = TRUE)
     })
     result <- lapply(futures, future::value)
+  }
+
+  .format_boot_result(result, p, n.boot, output_type)
+}
+
+## ---------------------------------------------------------------------------
+## Original parallel bootstrap implementation (preserved for comparison).
+## Differences from the current hc_boot():
+##   (1) Standardization: scales the full dataset ONCE before resampling,
+##       so each bootstrap sample inherits approximately (not exactly) unit scale.
+##       hc_boot() standardizes each bootstrap sample independently after
+##       row-resampling, giving every replicate exactly unit-scale data.
+##   (2) RNG: each worker calls set.seed(i * 1001L + seed) independently,
+##       mixing the global seed with the replicate index.  hc_boot() draws all
+##       randomness upfront from a single set.seed(seed) call, which guarantees
+##       sequential and future backends are bit-identical.
+##   (3) HC seed: i * 11L + seed (here) vs seed + i (hc_boot()).
+## ---------------------------------------------------------------------------
+
+.fit_boot_one_parallel <- function(i, Y, nodeType, whiteList, blackList, tol,
+                                   maxStep, restart, seed, nodeShuffle,
+                                   verbose, debug, addDeleteOnly) {
+  ## Original .fit_boot_one logic: generates bootstrap indices and the node
+  ## permutation from the same set.seed call inside the worker.
+  p <- ncol(Y)
+  n <- nrow(Y)
+  set.seed(i * 1001L + seed)
+  s.pick <- sample.int(n, n, replace = TRUE)
+
+  if (nodeShuffle) {
+    node.rand  <- sample.int(p, p, replace = FALSE)
+    node.index <- order(node.rand)
+  } else {
+    node.rand  <- seq_len(p)
+    node.index <- seq_len(p)
+  }
+
+  Y.B        <- Y[s.pick, node.rand, drop = FALSE]
+  node.B     <- nodeType[node.rand]
+  whiteList.B <- whiteList[node.rand, node.rand, drop = FALSE]
+  blackList.B <- blackList[node.rand, node.rand, drop = FALSE]
+  curRes <- hc_(Y.B, node.B, whiteList.B, blackList.B, tol, maxStep,
+                restart, i * 11L + seed, verbose, debug, addDeleteOnly)
+  curRes$adjacency[node.index, node.index, drop = FALSE]
+}
+
+hc_boot_parallel <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
+                             blackList = NULL, standardize = TRUE, tol = 1e-6,
+                             maxStep = 2000L, restart = 1L, seed = 1L,
+                             nodeShuffle = TRUE, numThread = 2L,
+                             verbose = FALSE, debug = FALSE,
+                             addDeleteOnly = FALSE,
+                             output_type = c("array", "freq", "both")) {
+  ## Original parallel bootstrap HC using foreach + doFuture.
+  ## Standardizes the full dataset once before resampling (full-data scaling).
+  ## Use hc_boot(backend = "future") for per-sample standardization and
+  ## upfront reproducible randomness.
+  output_type <- match.arg(output_type)
+
+  if (!requireNamespace("foreach",  quietly = TRUE) ||
+      !requireNamespace("future",   quietly = TRUE) ||
+      !requireNamespace("doFuture", quietly = TRUE)) {
+    stop("hc_boot_parallel requires foreach, future, and doFuture")
+  }
+  if (!is.numeric(n.boot) || length(n.boot) != 1L || is.na(n.boot) || n.boot < 1) {
+    stop("n.boot must be a positive integer")
+  }
+  if (!is.numeric(numThread) || length(numThread) != 1L ||
+      is.na(numThread) || numThread < 1) {
+    stop("numThread must be a positive integer")
+  }
+  if (!is.logical(nodeShuffle) || length(nodeShuffle) != 1L || is.na(nodeShuffle)) {
+    stop("nodeShuffle must be TRUE or FALSE")
+  }
+  if (!is.logical(standardize) || length(standardize) != 1L || is.na(standardize)) {
+    stop("standardize must be TRUE or FALSE")
+  }
+  if (!is.logical(addDeleteOnly) || length(addDeleteOnly) != 1L || is.na(addDeleteOnly)) {
+    stop("addDeleteOnly must be TRUE or FALSE")
+  }
+  n.boot    <- as.integer(n.boot)
+  numThread <- as.integer(numThread)
+
+  ## Validate inputs; then apply full-dataset standardization so each worker
+  ## receives pre-scaled data (original behavior).
+  args <- .validate_hc_inputs(Y, nodeType, whiteList, blackList,
+                              tol, maxStep, restart, seed)
+  if (standardize) {
+    for (i in which(args$nodeType == "c")) {
+      s <- stats::sd(args$Y[, i])
+      if (!is.finite(s) || s <= 0)
+        stop("continuous nodes must have positive finite standard deviation when standardize = TRUE")
+      args$Y[, i] <- (args$Y[, i] - mean(args$Y[, i])) / s
+    }
+  }
+  p <- ncol(args$Y)
+
+  old_plan <- future::plan()
+  on.exit(future::plan(old_plan), add = TRUE)
+  cores   <- parallel::detectCores()
+  if (is.na(cores) || cores < 1L) cores <- 1L
+  workers <- min(numThread, max(1L, cores - 1L))
+  future::plan(future::multisession, workers = workers)
+
+  `%dofuture%` <- doFuture::`%dofuture%`
+  i <- NULL
+  result <- foreach::foreach(
+    i = seq_len(n.boot),
+    .errorhandling = "stop",
+    .options.future = list(seed = TRUE, packages = "dagbagMv2")
+  ) %dofuture% {
+    .fit_boot_one_parallel(i, args$Y, args$nodeType, args$whiteList,
+                           args$blackList, tol, args$maxStep,
+                           args$restart, args$seed, nodeShuffle,
+                           verbose, debug, addDeleteOnly)
   }
 
   .format_boot_result(result, p, n.boot, output_type)

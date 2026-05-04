@@ -39,6 +39,9 @@ score_shd <- function(boot.adj, alpha = 1, freq.cutoff = 0.5, whiteList = NULL,
   if (!is.null(maxStep)) {
     warning("maxStep is deprecated and has no effect", call. = FALSE)
   }
+  if (!is.numeric(alpha) || length(alpha) != 1L || !is.finite(alpha) || alpha <= 0) {
+    stop("alpha must be a positive finite scalar")
+  }
   if (!is.numeric(freq.cutoff) || length(freq.cutoff) != 1L ||
       !is.finite(freq.cutoff) || freq.cutoff < 0 || freq.cutoff > 1) {
     stop("freq.cutoff must be a finite scalar in [0, 1]")
@@ -62,6 +65,9 @@ score_shd_freq <- function(freq, alpha = 1, freq.cutoff = 0.5, whiteList = NULL,
   if (!is.null(maxStep)) {
     warning("maxStep is deprecated and has no effect", call. = FALSE)
   }
+  if (!is.numeric(alpha) || length(alpha) != 1L || !is.finite(alpha) || alpha <= 0) {
+    stop("alpha must be a positive finite scalar")
+  }
   if (!is.numeric(freq.cutoff) || length(freq.cutoff) != 1L ||
       !is.finite(freq.cutoff) || freq.cutoff < 0 || freq.cutoff > 1) {
     stop("freq.cutoff must be a finite scalar in [0, 1]")
@@ -71,6 +77,9 @@ score_shd_freq <- function(freq, alpha = 1, freq.cutoff = 0.5, whiteList = NULL,
   }
   freq <- as.matrix(freq)
   storage.mode(freq) <- "double"
+  if (any(!is.finite(freq)) || any(freq < 0) || any(freq > 1)) {
+    stop("freq must contain finite values in [0, 1]")
+  }
   p <- nrow(freq)
   constraints <- .prepare_score_constraints(p, whiteList, blackList)
   score_shd_freq_cpp(freq, alpha, freq.cutoff, constraints$whiteList,
