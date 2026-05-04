@@ -44,9 +44,13 @@
   )
 }
 
-.prepare_hc_inputs <- function(Y, nodeType, whiteList, blackList, standardize,
+.validate_hc_inputs <- function(Y, nodeType, whiteList, blackList,
                                tol, maxStep, restart, seed) {
-  ## Shared input preparation for direct HC and bootstrap HC.
+  ## Validate and normalise all inputs shared by hc() and hc_boot().
+  ## Returns raw (unscaled) Y; standardization is the caller's responsibility:
+  ##   hc()      -- scales the full dataset once, before the single HC run.
+  ##   hc_boot() -- scales each bootstrap sample independently inside
+  ##                .fit_boot_one(), after row-resampling.
   ## The adjacency convention is matrix[from, to] == TRUE for from -> to.
   if (!is.matrix(Y) && !is.data.frame(Y)) {
     stop("Y must be a numeric matrix or data frame")
@@ -107,21 +111,6 @@
 
   controls <- .validate_controls(tol, maxStep, restart, seed)
 
-  if (!is.logical(standardize) || length(standardize) != 1L || is.na(standardize)) {
-    stop("standardize must be TRUE or FALSE")
-  }
-  if (standardize) {
-    for (i in which(nodeType == "c")) {
-      ## Match the original package behavior for continuous nodes, but fail
-      ## early on constant columns instead of creating NaN values.
-      s <- stats::sd(Y[, i])
-      if (!is.finite(s) || s <= 0) {
-        stop("continuous nodes must have positive finite standard deviation when standardize = TRUE")
-      }
-      Y[, i] <- (Y[, i] - mean(Y[, i])) / s
-    }
-  }
-
   list(
     Y = Y,
     nodeType = nodeType,
@@ -137,23 +126,57 @@ hc <- function(Y, nodeType = NULL, whiteList = NULL, blackList = NULL,
                standardize = TRUE, tol = 1e-6, maxStep = 2000L,
                restart = 1L, seed = 1L, verbose = FALSE, debug = FALSE,
                addDeleteOnly = FALSE) {
+  ## standardize = TRUE: continuous columns of Y are scaled to mean 0 / sd 1
+  ## on the full dataset before the HC run.
+  if (!is.logical(standardize) || length(standardize) != 1L || is.na(standardize)) {
+    stop("standardize must be TRUE or FALSE")
+  }
   if (!is.logical(addDeleteOnly) || length(addDeleteOnly) != 1L || is.na(addDeleteOnly)) {
     stop("addDeleteOnly must be TRUE or FALSE")
   }
-  args <- .prepare_hc_inputs(Y, nodeType, whiteList, blackList, standardize,
-                             tol, maxStep, restart, seed)
+  args <- .validate_hc_inputs(Y, nodeType, whiteList, blackList,
+                              tol, maxStep, restart, seed)
+  if (standardize) {
+    for (i in which(args$nodeType == "c")) {
+      s <- stats::sd(args$Y[, i])
+      if (!is.finite(s) || s <= 0)
+        stop("continuous nodes must have positive finite standard deviation when standardize = TRUE")
+      args$Y[, i] <- (args$Y[, i] - mean(args$Y[, i])) / s
+    }
+  }
   hc_(args$Y, args$nodeType, args$whiteList, args$blackList, tol,
       args$maxStep, args$restart, args$seed, verbose, debug, addDeleteOnly)
 }
 
 .fit_boot_one <- function(b, Y, nodeType, whiteList, blackList, tol, maxStep,
-                          restart, hc_seed, boot_index, node_perm,
+                          restart, hc_seed, boot_index, node_perm, standardize,
                           verbose, debug, addDeleteOnly) {
   ## Fit one bootstrap HC replicate.
-  ## boot_index and node_perm are pre-generated upfront so the result is
-  ## independent of the calling backend (sequential or future).
+  ## Y is the raw (unscaled) data matrix; boot_index and node_perm are
+  ## pre-generated upfront so the result is independent of the backend.
+  ##
+  ## standardize = TRUE: each bootstrap sample is standardized to mean 0 / sd 1
+  ## using its OWN rows, after row-resampling but before the HC run.
+  ## This ensures every replicate sees exactly unit-scale data rather than
+  ## approximately unit-scale data (which would result from scaling the full
+  ## dataset once and then resampling rows).
   p <- ncol(Y)
-  Y.B <- Y[boot_index, , drop = FALSE]
+  Y.B <- Y[boot_index, , drop = FALSE]  # bootstrap resample (raw scale)
+
+  if (standardize) {
+    ## Scale each continuous column using the bootstrap sample's own mean/sd.
+    ## The is.finite(s) && s > 0 guard handles the rare case where a bootstrap
+    ## column is constant (all duplicated rows); such columns are left unscaled
+    ## and the C++ BIC score returns +Inf, which hc_() treats as a non-improving
+    ## candidate (effectively excluding those edges).
+    for (i in which(nodeType == "c")) {
+      m <- mean(Y.B[, i])
+      s <- stats::sd(Y.B[, i])
+      if (is.finite(s) && s > 0) {
+        Y.B[, i] <- (Y.B[, i] - m) / s
+      }
+    }
+  }
 
   if (!is.null(node_perm)) {
     ## Permute node order before fitting and restore it afterward.
@@ -229,13 +252,22 @@ hc_boot <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
                     verbose = FALSE, debug = FALSE,
                     addDeleteOnly = FALSE,
                     output_type = c("array", "freq", "both")) {
-  ## Fit bootstrap HC replicates.  backend = "sequential" runs replicates one
-  ## by one; backend = "future" distributes them across parallel workers using
-  ## the future package (multisession).
+  ## Fit bootstrap HC replicates and aggregate edge frequencies.
+  ##
+  ## standardize = TRUE: each bootstrap sample is standardized independently
+  ## to mean 0 / sd 1 (using that sample's own rows) inside .fit_boot_one(),
+  ## immediately after row-resampling and before the HC run.  This is the
+  ## correct bootstrap behavior: every replicate sees exactly unit-scale data.
+  ## Contrast with hc(), where the full dataset is scaled once before the
+  ## single HC run.
+  ##
+  ## backend = "sequential": replicates run one by one in the current session.
+  ## backend = "future":     replicates are dispatched as parallel futures
+  ##                         (future::multisession).
   ##
   ## All randomness (bootstrap row indices, HC tie-breaking seeds, node
   ## permutations) is generated upfront from a single set.seed(seed) call so
-  ## that sequential and future runs produce bit-identical results.
+  ## that sequential and future backends produce bit-identical results.
   backend <- match.arg(backend)
   output_type <- match.arg(output_type)
 
@@ -254,10 +286,25 @@ hc_boot <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
     stop("addDeleteOnly must be TRUE or FALSE")
   }
 
-  args <- .prepare_hc_inputs(Y, nodeType, whiteList, blackList, standardize,
-                             tol, maxStep, restart, seed)
+  if (!is.logical(standardize) || length(standardize) != 1L || is.na(standardize)) {
+    stop("standardize must be TRUE or FALSE")
+  }
+  args <- .validate_hc_inputs(Y, nodeType, whiteList, blackList,
+                              tol, maxStep, restart, seed)
   n <- nrow(args$Y)
   p <- ncol(args$Y)
+
+  ## Validate constant columns on the full data upfront so the user gets a clear
+  ## error before any bootstrap work begins.  The actual transformation is deferred
+  ## to .fit_boot_one so each replicate uses its own bootstrap-sample statistics.
+  if (standardize) {
+    for (i in which(args$nodeType == "c")) {
+      s <- stats::sd(args$Y[, i])
+      if (!is.finite(s) || s <= 0) {
+        stop("continuous nodes must have positive finite standard deviation when standardize = TRUE")
+      }
+    }
+  }
 
   ## Save and restore the caller's global RNG state so set.seed() below does
   ## not have side effects outside this function.
@@ -294,7 +341,8 @@ hc_boot <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
     node_perm <- if (!is.null(node_permutations)) node_permutations[[b]] else NULL
     .fit_boot_one(b, args$Y, args$nodeType, args$whiteList, args$blackList,
                   tol, args$maxStep, args$restart, hc_seeds[b],
-                  boot_indices[[b]], node_perm, verbose, debug, addDeleteOnly)
+                  boot_indices[[b]], node_perm, standardize,
+                  verbose, debug, addDeleteOnly)
   }
 
   if (backend == "sequential") {
