@@ -40,7 +40,7 @@ moral_graph <- function(adj.matrix) {
       pars <- which(adj.matrix[, i] > 0)
       ## Add spouse edge for every unordered pair of parents (j < k ensures
       ## each pair is visited once; symmetrization below makes both directions).
-      for (j in 1:(n.parents[i] - 1)) {
+      for (j in seq_len(n.parents[i] - 1)) {
         for (k in (j + 1):n.parents[i]) {
           moral.adj.matrix[pars[j], pars[k]] <- 1
         }
@@ -68,7 +68,7 @@ vstructures <- function(adj.matrix) {
 
     if (n.par > 1) {
       ## j < k ensures par1 < par2 in result; unordered pair avoids duplicates.
-      for (j in 1:(n.par - 1)) {
+      for (j in seq_len(n.par - 1)) {
         for (k in (j + 1):n.par) {
           ## No edge in either direction between the two parents = unshielded.
           if (adj.matrix[parent.node[j], parent.node[k]] == 0 &&

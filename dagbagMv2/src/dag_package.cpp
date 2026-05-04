@@ -267,8 +267,7 @@ typedef Eigen::Ref<const MatrixXd> ConstMatRef;
 typedef Eigen::Ref<const VectorXd> ConstVecRef;
 
 MatrixXd crossprod_self(const ConstMatRef& A) {
-  const int n = A.cols();
-  return MatrixXd(n, n).setZero().selfadjointView<Lower>().rankUpdate(A.adjoint());
+  return A.adjoint() * A;
 }
 
 // Gaussian MLE log-likelihood for the regression Y ~ X*beta + e, e ~ N(0,sigma^2*I).
@@ -735,6 +734,9 @@ Rcpp::IntegerMatrix aggregate_freq_cpp(const Rcpp::NumericMatrix& seleFreq,
     if (verbose) {
       Rcpp::Rcout << (k + 1) << "th operation: " << (from + 1) << " -> " << (to + 1) << "\n";
     }
+    // Skip if blacklisted, whitelisted (already in result via white seed), or
+    // the reverse direction is already present (covers both whitelisted-reverse
+    // and greedily-added-reverse; DAGs have no anti-parallel edges).
     if (has_edge(black, from, to, p) || has_edge(white, from, to, p) ||
         has_edge(result, to, from, p)) {
       continue;
@@ -1080,7 +1082,9 @@ Rcpp::List hc_(const Rcpp::NumericMatrix& Y,
   for (int i = 0; i < restart; ++i) {
     // Space restart seeds by 101 to ensure independence across restarts.
     Rcpp::List curRes = hc1(Y, nodeType, whiteList, blackList, tol, maxStep,
-                            seed + i * 101, flip, verbose, debug, addDeleteOnly);
+                            static_cast<int>(static_cast<unsigned int>(seed) +
+                                             static_cast<unsigned int>(i) * 101U),
+                            flip, verbose, debug, addDeleteOnly);
     Rcpp::NumericVector curScoreVector = curRes["score"];
     const double curScore = Rcpp::sum(curScoreVector);
     if (!std::isfinite(curScore)) {
@@ -1091,7 +1095,7 @@ Rcpp::List hc_(const Rcpp::NumericMatrix& Y,
       bestScore = curScore;
     }
   }
-  if (bestScore == kInf) {
+  if (!std::isfinite(bestScore)) {
     Rcpp::stop("all HC restarts produced non-finite scores");
   }
   return bestRes;

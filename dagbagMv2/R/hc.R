@@ -326,6 +326,9 @@ hc_boot <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
                             simplify = FALSE)
   ## HC tie-breaking seed for bootstrap b = seed + b, giving each replicate a
   ## distinct seed without risk of collisions for typical n.boot values.
+  if (args$seed > .Machine$integer.max - n.boot) {
+    stop("seed is too large relative to n.boot; reduce seed so that seed + n.boot does not overflow")
+  }
   hc_seeds <- args$seed + seq_len(n.boot)
   ## NULL signals the no-shuffle fast path in .fit_boot_one (avoids copying
   ## the permutation matrices for every bootstrap when nodeShuffle = FALSE).

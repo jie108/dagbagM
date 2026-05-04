@@ -7,6 +7,6 @@ Author: Jie Peng
 Maintainer: Jie Peng <jiepeng@ucdavis.edu>
 Description: Local v2 package for learning directed acyclic graphs for mixtures of continuous and binary variables with improved hill-climbing cache handling and bootstrap aggregation.
 License: GPL (>= 2)
-Imports: Rcpp (>= 1.0.4), foreach, future, doFuture
-Suggests: testthat
+Imports: Rcpp (>= 1.0.4), future, stats
+Suggests: testthat, foreach, doFuture
 LinkingTo: Rcpp, RcppEigen, RcppNumerical
