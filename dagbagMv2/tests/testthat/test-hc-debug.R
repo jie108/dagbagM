@@ -59,10 +59,10 @@ test_that("bootstrap and C++ aggregation work with debug HC", {
   node_type <- c("c", "c", "c", "b")
 
   arr <- hc_boot(Y, n.boot = 4, nodeType = node_type, maxStep = 20,
-                 restart = 2, seed = 2, debug = TRUE, return = "array")
+                 restart = 2, seed = 2, debug = TRUE, output_type = "array")
   freq <- hc_boot(Y, n.boot = 4, nodeType = node_type, maxStep = 20,
                   restart = 2, seed = 2, debug = TRUE,
-                  addDeleteOnly = TRUE, return = "freq")
+                  addDeleteOnly = TRUE, output_type = "freq")
   agg_array <- score_shd(arr)
   agg_freq <- score_shd_freq(freq)
 

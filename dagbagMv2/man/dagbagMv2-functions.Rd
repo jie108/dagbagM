@@ -1,7 +1,6 @@
 \name{dagbagMv2-functions}
 \alias{hc}
 \alias{hc_boot}
-\alias{hc_boot_parallel}
 \alias{score_shd}
 \alias{score_shd_freq}
 \alias{cal_order}
@@ -23,22 +22,17 @@ hc(Y, nodeType = NULL, whiteList = NULL, blackList = NULL,
 hc_boot(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
         blackList = NULL, standardize = TRUE, tol = 1e-6,
         maxStep = 2000L, restart = 1L, seed = 1L,
-        nodeShuffle = TRUE, verbose = FALSE, debug = FALSE,
+        nodeShuffle = TRUE,
+        backend = c("sequential", "future"),
+        workers = NULL,
+        verbose = FALSE, debug = FALSE,
         addDeleteOnly = FALSE,
-        return = c("array", "freq", "both"))
+        output_type = c("array", "freq", "both"))
 
-hc_boot_parallel(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
-                 blackList = NULL, standardize = TRUE, tol = 1e-6,
-                 maxStep = 2000L, restart = 1L, seed = 1L,
-                 nodeShuffle = TRUE, numThread = 2L,
-                 verbose = FALSE, debug = FALSE,
-                 addDeleteOnly = FALSE,
-                 return = c("array", "freq", "both"))
-
-score_shd(boot.adj, alpha = 1, freqCutoff = 0.5, whiteList = NULL,
+score_shd(boot.adj, alpha = 1, freq.cutoff = 0.5, whiteList = NULL,
           blackList = NULL, maxStep = NULL, verbose = FALSE)
 
-score_shd_freq(freq, alpha = 1, freqCutoff = 0.5, whiteList = NULL,
+score_shd_freq(freq, alpha = 1, freq.cutoff = 0.5, whiteList = NULL,
                blackList = NULL, maxStep = NULL, verbose = FALSE)
 }
 \arguments{
@@ -52,25 +46,37 @@ score_shd_freq(freq, alpha = 1, freqCutoff = 0.5, whiteList = NULL,
 \item{maxStep}{Maximum hill-climbing steps. In \code{score_shd} and
 \code{score_shd_freq} this is a deprecated legacy argument with no effect.}
 \item{restart}{Number of hill-climbing restarts.}
-\item{seed}{Seed for bootstrap sampling, shuffling, and tie-breaking.}
+\item{seed}{Seed for bootstrap sampling, node shuffling, and HC tie-breaking.
+All randomness is derived from this one value so sequential and future
+backends produce identical results.}
 \item{verbose}{Whether to print progress.}
 \item{debug}{Whether to run additional HC validity checks.}
 \item{addDeleteOnly}{Whether to skip reversal candidates in HC.}
 \item{n.boot}{Number of bootstrap resamples.}
-\item{nodeShuffle}{Whether to shuffle node order within each bootstrap fit.}
-\item{numThread}{Number of workers for parallel bootstrap fitting.}
-\item{return}{Bootstrap output mode: full array, edge frequencies, or both.}
+\item{nodeShuffle}{Whether to randomize node visit order within each bootstrap
+fit to reduce greedy-search ordering bias.}
+\item{backend}{Execution backend: \code{"sequential"} (default) runs replicates
+one by one; \code{"future"} dispatches them in parallel using
+\code{future::multisession}.}
+\item{workers}{Number of parallel workers for \code{backend = "future"}.
+\code{NULL} (default) uses all available cores minus one, capped at
+\code{n.boot}.}
+\item{output_type}{Bootstrap output mode: \code{"array"} returns the full
+\code{p x p x B} adjacency array; \code{"freq"} returns only the edge
+selection frequency matrix (saves memory for large \code{B});
+\code{"both"} returns a list with both.}
 \item{boot.adj}{A \code{p by p by B} array of bootstrap DAGs.}
 \item{freq}{A \code{p by p} edge selection frequency matrix.}
 \item{alpha}{Generalized SHD reversal weight parameter.}
-\item{freqCutoff}{Edge selection frequency cutoff in [0, 1]; edges with
-generalized selection frequency above this value are candidates for
-inclusion. Default 0.5 corresponds to majority-vote selection.}
+\item{freq.cutoff}{Edge inclusion threshold in [0, 1]: an edge is a candidate
+iff its generalized selection frequency exceeds this value.
+Default 0.5 corresponds to majority-vote skeleton selection.}
 }
 \value{
 \code{hc} returns a list with adjacency, node scores, operations, deltas, and
-step count. Bootstrap functions return an adjacency array, a frequency matrix,
-or both. Aggregation functions return an adjacency matrix.
+step count. \code{hc_boot} returns an adjacency array, a frequency matrix, or
+a list with both, depending on \code{output_type}. Aggregation functions return
+an integer adjacency matrix.
 }
 \examples{
 ## Generate small mixed data: 3 continuous + 1 binary node
@@ -88,7 +94,7 @@ fit <- hc(Y, nodeType)
 fit$adjacency
 
 ## Bootstrap aggregation (small B for speed)
-boot_freq <- hc_boot(Y, n.boot = 5, nodeType = nodeType, return = "freq")
+boot_freq <- hc_boot(Y, n.boot = 5, nodeType = nodeType, output_type = "freq")
 agg <- score_shd_freq(boot_freq)
 agg
 

@@ -25,6 +25,11 @@ cal_order <- function(adj_matrix) {
   node_order
 }
 
+## Moralization: for each node i with >= 2 parents, add an undirected "spouse"
+## edge between every pair of those parents (marry the parents).  The resulting
+## moral graph is undirected: it contains the skeleton of the DAG plus these
+## added spouse edges.  The final symmetrization (A + t(A)) > 0 ensures the
+## matrix is symmetric even if the DAG itself has directed edges between parents.
 moral_graph <- function(adj.matrix) {
   p <- nrow(adj.matrix)
   moral.adj.matrix <- adj.matrix
@@ -33,6 +38,8 @@ moral_graph <- function(adj.matrix) {
   for (i in seq_len(p)) {
     if (n.parents[i] >= 2) {
       pars <- which(adj.matrix[, i] > 0)
+      ## Add spouse edge for every unordered pair of parents (j < k ensures
+      ## each pair is visited once; symmetrization below makes both directions).
       for (j in 1:(n.parents[i] - 1)) {
         for (k in (j + 1):n.parents[i]) {
           moral.adj.matrix[pars[j], pars[k]] <- 1
@@ -41,9 +48,17 @@ moral_graph <- function(adj.matrix) {
     }
   }
 
+  ## Symmetrize: (A + t(A)) > 0 captures both the original directed edges
+  ## (their undirected versions) and the newly added spouse edges.
   (moral.adj.matrix + t(moral.adj.matrix)) > 0
 }
 
+## Enumerate all v-structures (unshielded colliders) in the DAG.
+## A v-structure is a triple par1 -> child <- par2 where par1 and par2 are
+## NOT adjacent (no edge in either direction between them).
+## Each triple is reported exactly once with par1 < par2 (canonical ordering)
+## because the inner loops enumerate unordered pairs (j < k).
+## Returns an Nx3 matrix with columns (par1, child, par2), or NULL if none exist.
 vstructures <- function(adj.matrix) {
   p <- ncol(adj.matrix)
   res <- NULL
@@ -52,8 +67,10 @@ vstructures <- function(adj.matrix) {
     n.par <- length(parent.node)
 
     if (n.par > 1) {
+      ## j < k ensures par1 < par2 in result; unordered pair avoids duplicates.
       for (j in 1:(n.par - 1)) {
         for (k in (j + 1):n.par) {
+          ## No edge in either direction between the two parents = unshielded.
           if (adj.matrix[parent.node[j], parent.node[k]] == 0 &&
               adj.matrix[parent.node[k], parent.node[j]] == 0) {
             res <- rbind(res, c(parent.node[j], i, parent.node[k]))
@@ -73,6 +90,12 @@ skeleton <- function(adj.matrix) {
   (adj.matrix + t(adj.matrix)) > 0
 }
 
+## Find which v-structures in target also appear in true (precision-style lookup).
+## Semantics are asymmetric: the outer loop iterates over target; each row in
+## target is looked up in true.  The return value is the subset of TRUE rows that
+## were matched: at most nrow(target) rows and at most nrow(true) distinct
+## rows.  Pass (estimated, truth) to compute true-positive v-structures; swap
+## arguments to get false positives from the other direction.
 compare.vstructures <- function(target.vstructures, true.vstructures) {
   corr.v <- NULL
   if (!is.null(target.vstructures) && !is.null(true.vstructures)) {

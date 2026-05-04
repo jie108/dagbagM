@@ -19,8 +19,19 @@
   list(whiteList = whiteList, blackList = blackList)
 }
 
-score_shd <- function(boot.adj, alpha = 1, freqCutoff = 0.5, whiteList = NULL,
+score_shd <- function(boot.adj, alpha = 1, freq.cutoff = 0.5, whiteList = NULL,
                       blackList = NULL, maxStep = NULL, verbose = FALSE) {
+  ## Aggregate a bootstrap array into a single consensus DAG using generalized SHD.
+  ##
+  ## For each ordered pair (i, j), the generalized score is:
+  ##   gsf(i, j) = sf(i, j) + (1 - alpha/2) * sf(j, i)
+  ## where sf(i, j) = fraction of bootstrap DAGs containing edge i->j.
+  ## A pair (i, j) enters the candidate set iff gsf(i, j) > freq.cutoff.
+  ## With alpha=1 (default): gsf = sf + 0.5 * sf_reverse.
+  ##
+  ## The greedy pass then adds candidates in decreasing gsf order, skipping any
+  ## edge that would create a cycle or violate a list constraint.
+  ##
   ## C++ computes edge frequencies from the bootstrap array and then performs
   ## the deterministic greedy generalized-SHD aggregation.
   ## maxStep is retained for backward compatibility with v1 call sites but has
@@ -28,9 +39,9 @@ score_shd <- function(boot.adj, alpha = 1, freqCutoff = 0.5, whiteList = NULL,
   if (!is.null(maxStep)) {
     warning("maxStep is deprecated and has no effect", call. = FALSE)
   }
-  if (!is.numeric(freqCutoff) || length(freqCutoff) != 1L ||
-      !is.finite(freqCutoff) || freqCutoff < 0 || freqCutoff > 1) {
-    stop("freqCutoff must be a finite scalar in [0, 1]")
+  if (!is.numeric(freq.cutoff) || length(freq.cutoff) != 1L ||
+      !is.finite(freq.cutoff) || freq.cutoff < 0 || freq.cutoff > 1) {
+    stop("freq.cutoff must be a finite scalar in [0, 1]")
   }
   if (is.null(dim(boot.adj)) || length(dim(boot.adj)) != 3L ||
       dim(boot.adj)[1] != dim(boot.adj)[2]) {
@@ -38,22 +49,22 @@ score_shd <- function(boot.adj, alpha = 1, freqCutoff = 0.5, whiteList = NULL,
   }
   p <- dim(boot.adj)[1]
   constraints <- .prepare_score_constraints(p, whiteList, blackList)
-  score_shd_cpp(boot.adj, alpha, freqCutoff, constraints$whiteList,
+  score_shd_cpp(boot.adj, alpha, freq.cutoff, constraints$whiteList,
                 constraints$blackList, verbose)
 }
 
-score_shd_freq <- function(freq, alpha = 1, freqCutoff = 0.5, whiteList = NULL,
+score_shd_freq <- function(freq, alpha = 1, freq.cutoff = 0.5, whiteList = NULL,
                            blackList = NULL, maxStep = NULL, verbose = FALSE) {
-  ## Frequency-only aggregation pairs with hc_boot(..., return = "freq") so
+  ## Frequency-only aggregation pairs with hc_boot(..., output_type = "freq") so
   ## large bootstrap runs do not need to retain all individual adjacency arrays.
   ## maxStep is retained for backward compatibility with v1 call sites but has
   ## no effect; the C++ aggregator processes all eligible candidates in one pass.
   if (!is.null(maxStep)) {
     warning("maxStep is deprecated and has no effect", call. = FALSE)
   }
-  if (!is.numeric(freqCutoff) || length(freqCutoff) != 1L ||
-      !is.finite(freqCutoff) || freqCutoff < 0 || freqCutoff > 1) {
-    stop("freqCutoff must be a finite scalar in [0, 1]")
+  if (!is.numeric(freq.cutoff) || length(freq.cutoff) != 1L ||
+      !is.finite(freq.cutoff) || freq.cutoff < 0 || freq.cutoff > 1) {
+    stop("freq.cutoff must be a finite scalar in [0, 1]")
   }
   if (!is.matrix(freq) || nrow(freq) != ncol(freq)) {
     stop("freq must be a square matrix")
@@ -62,6 +73,6 @@ score_shd_freq <- function(freq, alpha = 1, freqCutoff = 0.5, whiteList = NULL,
   storage.mode(freq) <- "double"
   p <- nrow(freq)
   constraints <- .prepare_score_constraints(p, whiteList, blackList)
-  score_shd_freq_cpp(freq, alpha, freqCutoff, constraints$whiteList,
+  score_shd_freq_cpp(freq, alpha, freq.cutoff, constraints$whiteList,
                      constraints$blackList, verbose)
 }

@@ -108,6 +108,12 @@ bool edge_on_loop_cpp(int fromNode, int toNode, const AdjList& parents) {
   return false;
 }
 
+// Validate that graph has no directed cycles. Checks each existing edge (from,to)
+// by asking whether to is already an ancestor of from (i.e., there is a directed
+// path to->...->from). If so, the new edge from->to would close a cycle.
+// Complexity: O(E*(p+E)) — acceptable because this is only called in
+// validate_hc_inputs() (once per run) and in debug mode (never in production).
+// For a DAG validity check in a hot path, use a Kahn topological sort instead.
 bool is_dag(const std::vector<unsigned char>& graph, int p) {
   AdjList parents = graph_to_parents(graph, p);
   for (int from = 0; from < p; ++from) {
@@ -218,8 +224,20 @@ void validate_hc_inputs(const Rcpp::NumericMatrix& Y,
 }
 
 // Fill a pre-allocated workspace with the design matrix for a candidate parent
-// set. Returns the number of columns written (q). The workspace must have at
-// least n rows and (p+1) columns. Avoids per-call R heap allocation.
+// set and return q = total columns written.
+//
+// Column layout (left to right):
+//   [extraParent column, if extraParent >= 0]   ← candidate new parent (add op)
+//   [existing parents, skipping dropParent]      ← current parents minus dropped (delete op)
+//   [ones column]                                ← intercept, always last
+//
+// q counts every column including the intercept.  The caller passes
+// workspace.leftCols(q) to bic_score, which then uses (q - 1) as the BIC
+// penalty term — q-1 equals the number of real parent predictors because the
+// intercept is not counted as a free structural parameter.
+//
+// The workspace must be pre-allocated to at least n rows and (p+1) columns.
+// This avoids per-call heap allocation inside the hot HC loop.
 int fill_design(MatrixXd& workspace, const Rcpp::NumericMatrix& Y,
                 const std::vector<int>& parents,
                 int extraParent = -1,
@@ -253,6 +271,11 @@ MatrixXd crossprod_self(const ConstMatRef& A) {
   return MatrixXd(n, n).setZero().selfadjointView<Lower>().rankUpdate(A.adjoint());
 }
 
+// Gaussian MLE log-likelihood for the regression Y ~ X*beta + e, e ~ N(0,sigma^2*I).
+// beta_hat = (X'X)^{-1} X'Y  (solved via Cholesky of X'X).
+// sigma2_hat = ||Y - X*beta_hat||^2 / n  (MLE, divides by n not n-1).
+// log L = -n/2 * (log(2*pi) + log(sigma2_hat) + 1).
+// Returns -Inf if X'X is singular, if beta is non-finite, or if sigma2 <= 0.
 double continuous_loglik(const ConstMatRef& X, const ConstVecRef& Y) {
   const int n = X.rows();
   LLT<MatrixXd> llt(crossprod_self(X));
@@ -310,6 +333,11 @@ double logistic_loglik(const ConstMatRef& X, const ConstVecRef& Y) {
   return -fopt;
 }
 
+// BIC = -2*logL + log(n) * (q - 1).
+// X has q columns: (q-1) parent predictors + 1 intercept.  The BIC penalty
+// counts only the (q-1) structural parameters, not the intercept, which is
+// always present regardless of parent set size.
+// Smaller BIC is better; returns +Inf when loglik is non-finite.
 double bic_score(const ConstMatRef& X,
                  const ConstVecRef& y,
                  const std::string& nodeType) {
@@ -319,6 +347,7 @@ double bic_score(const ConstMatRef& X,
   if (!std::isfinite(loglik)) {
     return kInf;
   }
+  // q - 1 = number of parent predictors (excludes the intercept column).
   const double score = -2.0 * loglik + std::log(static_cast<double>(n)) * (q - 1);
   return std::isfinite(score) ? score : kInf;
 }
@@ -338,10 +367,28 @@ double node_score(MatrixXd& workspace,
   return bic_score(workspace.leftCols(q), y, nodeType[node]);
 }
 
-// One candidate-cache entry. Add/delete use value + scoreA + versionA.
-// Reverse uses scoreA for the old child after deletion, scoreB for the old
-// parent after adding the reversed edge, and two version stamps because two
-// parent sets determine the reversal delta.
+// Cache entry for one directed edge candidate.  Fields serve different roles
+// depending on the operation being cached:
+//
+//   Add from->to:
+//     scoreA   = BIC score of node `to` after adding `from` as a parent
+//     versionA = version[to] at the time scoreA was computed
+//     (value = scoreA - curScore[to]; scoreB/versionB unused)
+//
+//   Delete from->to:
+//     scoreA   = BIC score of node `to` after removing `from` from its parents
+//     versionA = version[to] at the time scoreA was computed
+//     (value = scoreA - curScore[to]; scoreB/versionB unused)
+//
+//   Reverse from->to (delete from->to, then add to->from):
+//     scoreA   = BIC score of `to` after deletion   (= deleteCache[idx].scoreA)
+//     scoreB   = BIC score of `from` after adding `to` as a parent
+//     versionA = version[to] stamp for scoreA
+//     versionB = version[from] stamp for scoreB
+//     value    = (scoreA - curScore[to]) + (scoreB - curScore[from])
+//
+// Cache entries default to versionA=versionB=-1 so they are always stale
+// on first access (version[node] initializes to 0, 0 != -1).
 struct OneCache {
   double value;
   double scoreA;
@@ -489,13 +536,20 @@ struct LastOpState {
 // Incrementally update acyStatus for one candidate operation given the last
 // accepted operation.
 //
-// Convention:
-//   acyStatus(from, to) = true iff adding from->to is acyclic
-//   acyStatus(to, from) = true iff reversing from->to is acyclic
+// Dual-slot convention (one matrix, two semantics):
+//   acyStatus(from, to) = true  iff adding from->to is currently acyclic
+//   acyStatus(to, from) = true  iff reversing from->to is currently acyclic
+//   NA_LOGICAL           = not yet computed (lazy initialization)
 //
-// operType: 1 = add, 3 = reverse.
-// Only reads/writes acyStatus for the given (operFrom, operTo) pair.
-// Mirrors the InterCellDAGv3 acyclicUpdate logic.
+// operType: 1 = add candidate, 3 = reverse candidate.
+// Only the (operFrom, operTo) slot is touched; all other entries are unchanged.
+//
+// The function propagates the effect of the last accepted operation:
+//   type 1 (add):    new path last.from->last.to may close cycles → set false.
+//   type 2 (delete): a blocking path was removed → re-check previously false entries.
+//   type 3 (reverse): both effects apply; re-check when affected by the deleted
+//                     half; set false when affected only by the new edge.
+// If neither ancestor/descendant condition is met the entry is left unchanged.
 void acyclic_cache_update(const LastOpState& last,
                           int operFrom, int operTo, int operType,
                           AdjList& parents,
@@ -583,7 +637,20 @@ Rcpp::IntegerMatrix wrap_int_graph(const std::vector<unsigned char>& graph, int 
 }
 
 // Aggregate bootstrap DAGs from an edge-frequency matrix using generalized SHD.
-// Candidate edges are sorted deterministically before the greedy acyclic pass.
+//
+// Generalized score function (GSF) for edge from->to:
+//   gsf(from, to) = sf(from, to) + (1 - alpha/2) * sf(to, from)
+// where sf(i, j) = fraction of bootstrap DAGs containing edge i->j.
+//
+// With the default alpha=1:  gsf = sf + 0.5 * sf_reverse.
+// Both orientations of an undirected skeleton edge enter the candidate list with
+// the same gsf value, so the greedy acyclic pass orients the edge toward
+// whichever direction the forward sf favors (higher sf wins the sort tie-break).
+// freqCutoff acts as a skeleton-inclusion threshold: an undirected edge appears
+// iff max(gsf(i,j), gsf(j,i)) > freqCutoff.
+//
+// Candidates are sorted by (gsf desc, sf desc, from asc, to asc) for
+// deterministic output across platforms.
 Rcpp::IntegerMatrix aggregate_freq_cpp(const Rcpp::NumericMatrix& seleFreq,
                                        double alpha,
                                        double freqCutoff,
@@ -707,10 +774,24 @@ bool edgeOnLoop(int fromNode, int toNode, const Rcpp::List& parSet) {
 //   2: delete from -> to
 //   3: reverse from -> to into to -> from
 //
-// Cache versioning:
-//   version[node] changes whenever that node's parent set changes.
-//   A cache entry is recomputed if its stored version stamp no longer matches.
-//   Missing cache entries start at -1, so the first eligible visit computes them.
+// Cache invalidation via version stamps:
+//   version[node] is initialized to 0 and incremented every time that node's
+//   parent set changes (i.e., after an accepted add, delete, or either leg of
+//   a reverse).  Each OneCache entry stores the version[node] at the time its
+//   score was computed.  A hit requires the stored stamp to equal the current
+//   version; any mismatch triggers a recomputation.
+//   Default stamp -1 guarantees a miss on first access (version starts at 0).
+//
+// Per-step loop structure:
+//   Outer loop: to (the node whose BIC score changes for add/delete/reverse-to).
+//   Inner loop: from.
+//   Branch 1 — edge (from,to) exists:    evaluate delete and (if eligible) reverse.
+//   Branch 2 — edge (from,to) absent and edge (to,from) absent: evaluate add.
+//
+// reverseCache.scoreA reuse:
+//   For a reverse of from->to the "new score of to after deletion" is identical
+//   to deleteCache.scoreA.  When deleteCache is fresh (same version[to]), that
+//   value is copied directly into reverseCache.scoreA without recomputation.
 Rcpp::List hc1(const Rcpp::NumericMatrix& Y,
                const Rcpp::CharacterVector& nodeType,
                const Rcpp::LogicalMatrix& whiteList,

@@ -12,3 +12,4 @@ score_shd_freq_cpp <- function(freq, alpha, freqCutoff, whiteList, blackList, ve
 score_shd_cpp <- function(bootAdj, alpha, freqCutoff, whiteList, blackList, verbose = FALSE) {
     .Call(`_dagbagMv2_score_shd_cpp`, bootAdj, alpha, freqCutoff, whiteList, blackList, verbose)
 }
+

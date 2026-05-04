@@ -146,41 +146,51 @@ hc <- function(Y, nodeType = NULL, whiteList = NULL, blackList = NULL,
       args$maxStep, args$restart, args$seed, verbose, debug, addDeleteOnly)
 }
 
-.fit_boot_one <- function(i, Y, nodeType, whiteList, blackList, tol, maxStep,
-                          restart, seed, nodeShuffle, verbose, debug,
-                          addDeleteOnly) {
-  ## Fit one bootstrap sample. If nodeShuffle is TRUE, fit in permuted node
-  ## order and then map the learned adjacency back to the original order.
+.fit_boot_one <- function(b, Y, nodeType, whiteList, blackList, tol, maxStep,
+                          restart, hc_seed, boot_index, node_perm,
+                          verbose, debug, addDeleteOnly) {
+  ## Fit one bootstrap HC replicate.
+  ## boot_index and node_perm are pre-generated upfront so the result is
+  ## independent of the calling backend (sequential or future).
   p <- ncol(Y)
-  n <- nrow(Y)
-  set.seed(i * 1001L + seed)  # space replicates by 1001 to reduce seed collisions
-  s.pick <- sample.int(n, n, replace = TRUE)
+  Y.B <- Y[boot_index, , drop = FALSE]
 
-  if (nodeShuffle) {
-    node.rand <- sample.int(p, p, replace = FALSE)
-    node.index <- order(node.rand)
+  if (!is.null(node_perm)) {
+    ## Permute node order before fitting and restore it afterward.
+    ## HC is a greedy search and its result can depend on the order in which
+    ## nodes are visited (especially at score ties).  Randomizing node order
+    ## each bootstrap replicate reduces this ordering bias in the aggregated
+    ## edge frequencies.
+    node.index <- order(node_perm)  # inverse permutation for restoring original order
+    Y.B <- Y.B[, node_perm, drop = FALSE]
+    node.B <- nodeType[node_perm]
+    whiteList.B <- whiteList[node_perm, node_perm, drop = FALSE]
+    blackList.B <- blackList[node_perm, node_perm, drop = FALSE]
   } else {
-    node.rand <- seq_len(p)
     node.index <- seq_len(p)
+    node.B <- nodeType
+    whiteList.B <- whiteList
+    blackList.B <- blackList
   }
 
-  Y.B <- Y[s.pick, node.rand, drop = FALSE]
-  node.B <- nodeType[node.rand]
-  whiteList.B <- whiteList[node.rand, node.rand, drop = FALSE]
-  blackList.B <- blackList[node.rand, node.rand, drop = FALSE]
-  # HC seed uses spacing 11 (vs 1001 for bootstrap) to avoid seed overlap.
   cur_res <- hc_(Y.B, node.B, whiteList.B, blackList.B, tol, maxStep,
-                 restart, i * 11L + seed, verbose, debug, addDeleteOnly)
+                 restart, hc_seed, verbose, debug, addDeleteOnly)
+  ## Restore the original node ordering before returning.
   cur_res$adjacency[node.index, node.index, drop = FALSE]
 }
 
-.format_boot_result <- function(result, p, n.boot, return) {
-  ## Large bootstrap runs can avoid storing the full p x p x B array by
-  ## returning only edge selection frequencies.
-  if (return == "array") {
+.format_boot_result <- function(result, p, n.boot, output_type) {
+  ## Collate bootstrap adjacency matrices into the requested output form.
+  ## "array"  : raw p x p x B adjacency array (largest memory, keeps all info).
+  ## "freq"   : p x p edge-selection frequency matrix, freq[i,j] = fraction of
+  ##            bootstrap DAGs containing edge i->j; diagonal forced to zero.
+  ## "both"   : both the array and the freq matrix.
+  if (output_type == "array") {
     return(array(as.numeric(unlist(result, use.names = FALSE)), dim = c(p, p, n.boot)))
   }
 
+  ## Accumulate frequencies incrementally rather than building the full 3D array
+  ## first, saving memory when only frequencies are needed.
   freq <- matrix(0, p, p)
   for (i in seq_len(n.boot)) {
     freq <- freq + result[[i]]
@@ -188,7 +198,7 @@ hc <- function(Y, nodeType = NULL, whiteList = NULL, blackList = NULL,
   freq <- freq / n.boot
   diag(freq) <- 0
 
-  if (return == "freq") {
+  if (output_type == "freq") {
     return(freq)
   }
   list(
@@ -197,13 +207,38 @@ hc <- function(Y, nodeType = NULL, whiteList = NULL, blackList = NULL,
   )
 }
 
+.resolve_future_workers <- function(workers, n.boot, verbose) {
+  ## Cap parallel workers to (available cores - 1) and to n.boot.
+  ## Returns 1 if the machine reports no available cores.
+  available <- max(1L, as.integer(future::availableCores()) - 1L)
+  requested <- if (is.null(workers)) available else as.integer(workers)
+  capped <- max(1L, min(requested, available, n.boot))
+  if (verbose && capped < requested) {
+    message("Capping workers from ", requested, " to ", capped,
+            " based on available cores and n.boot.")
+  }
+  capped
+}
+
 hc_boot <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
                     blackList = NULL, standardize = TRUE, tol = 1e-6,
                     maxStep = 2000L, restart = 1L, seed = 1L,
-                    nodeShuffle = TRUE, verbose = FALSE, debug = FALSE,
+                    nodeShuffle = TRUE,
+                    backend = c("sequential", "future"),
+                    workers = NULL,
+                    verbose = FALSE, debug = FALSE,
                     addDeleteOnly = FALSE,
-                    return = c("array", "freq", "both")) {
-  return <- match.arg(return)
+                    output_type = c("array", "freq", "both")) {
+  ## Fit bootstrap HC replicates.  backend = "sequential" runs replicates one
+  ## by one; backend = "future" distributes them across parallel workers using
+  ## the future package (multisession).
+  ##
+  ## All randomness (bootstrap row indices, HC tie-breaking seeds, node
+  ## permutations) is generated upfront from a single set.seed(seed) call so
+  ## that sequential and future runs produce bit-identical results.
+  backend <- match.arg(backend)
+  output_type <- match.arg(output_type)
+
   if (!is.numeric(n.boot) || length(n.boot) != 1L || is.na(n.boot) || n.boot < 1) {
     stop("n.boot must be a positive integer")
   }
@@ -211,82 +246,79 @@ hc_boot <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
   if (!is.logical(nodeShuffle) || length(nodeShuffle) != 1L || is.na(nodeShuffle)) {
     stop("nodeShuffle must be TRUE or FALSE")
   }
+  if (!is.null(workers) && (!is.numeric(workers) || length(workers) != 1L ||
+      is.na(workers) || workers < 1)) {
+    stop("workers must be NULL or a positive integer")
+  }
   if (!is.logical(addDeleteOnly) || length(addDeleteOnly) != 1L || is.na(addDeleteOnly)) {
     stop("addDeleteOnly must be TRUE or FALSE")
   }
 
   args <- .prepare_hc_inputs(Y, nodeType, whiteList, blackList, standardize,
                              tol, maxStep, restart, seed)
+  n <- nrow(args$Y)
   p <- ncol(args$Y)
-  result <- vector("list", n.boot)
-  for (i in seq_len(n.boot)) {
-    if (verbose) {
-      message("fit bootstrap sample ", i, "...")
+
+  ## Save and restore the caller's global RNG state so set.seed() below does
+  ## not have side effects outside this function.
+  old_rng <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+    get(".Random.seed", envir = .GlobalEnv, inherits = FALSE) else NULL
+  on.exit({
+    if (is.null(old_rng)) {
+      if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+        rm(".Random.seed", envir = .GlobalEnv)
+    } else {
+      assign(".Random.seed", old_rng, envir = .GlobalEnv)
     }
-    result[[i]] <- .fit_boot_one(i, args$Y, args$nodeType, args$whiteList,
-                                 args$blackList, tol, args$maxStep,
-                                 args$restart, args$seed, nodeShuffle,
-                                 verbose, debug, addDeleteOnly)
-  }
-  .format_boot_result(result, p, n.boot, return)
-}
+  }, add = TRUE)
 
-hc_boot_parallel <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
-                             blackList = NULL, standardize = TRUE, tol = 1e-6,
-                             maxStep = 2000L, restart = 1L, seed = 1L,
-                             nodeShuffle = TRUE, numThread = 2L,
-                             verbose = FALSE, debug = FALSE,
-                             addDeleteOnly = FALSE,
-                             return = c("array", "freq", "both")) {
-  return <- match.arg(return)
-  if (!requireNamespace("foreach", quietly = TRUE) ||
-      !requireNamespace("future", quietly = TRUE) ||
-      !requireNamespace("doFuture", quietly = TRUE)) {
-    stop("hc_boot_parallel requires foreach, future, and doFuture")
-  }
-  if (!is.numeric(n.boot) || length(n.boot) != 1L || is.na(n.boot) || n.boot < 1) {
-    stop("n.boot must be a positive integer")
-  }
-  if (!is.numeric(numThread) || length(numThread) != 1L || is.na(numThread) || numThread < 1) {
-    stop("numThread must be a positive integer")
-  }
-  if (!is.logical(nodeShuffle) || length(nodeShuffle) != 1L || is.na(nodeShuffle)) {
-    stop("nodeShuffle must be TRUE or FALSE")
-  }
-  if (!is.logical(addDeleteOnly) || length(addDeleteOnly) != 1L || is.na(addDeleteOnly)) {
-    stop("addDeleteOnly must be TRUE or FALSE")
-  }
-  n.boot <- as.integer(n.boot)
-  numThread <- as.integer(numThread)
-
-  args <- .prepare_hc_inputs(Y, nodeType, whiteList, blackList, standardize,
-                             tol, maxStep, restart, seed)
-  p <- ncol(args$Y)
-
-  old_plan <- future::plan()
-  ## Restore the user's previous future plan even if a worker errors.
-  on.exit(future::plan(old_plan), add = TRUE)
-  cores <- parallel::detectCores()
-  if (is.na(cores) || cores < 1L) {
-    cores <- 1L
-  }
-  workers <- min(numThread, max(1L, cores - 1L))
-  future::plan(future::multisession, workers = workers)
-
-  `%dofuture%` <- doFuture::`%dofuture%`
-  i <- NULL
-  result <- foreach::foreach(
-    i = seq_len(n.boot),
-    .errorhandling = "stop",
-    ## seed = TRUE suppresses doFuture's RNG warning; actual reproducibility
-    ## is controlled by the explicit set.seed() inside .fit_boot_one.
-    .options.future = list(seed = TRUE, packages = "dagbagMv2")
-  ) %dofuture% {
-    .fit_boot_one(i, args$Y, args$nodeType, args$whiteList,
-                  args$blackList, tol, args$maxStep,
-                  args$restart, args$seed, nodeShuffle,
-                  verbose, debug, addDeleteOnly)
+  ## Generate all bootstrap indices, HC seeds, and node permutations from one
+  ## seed.  Drawing them upfront (before any parallel dispatch) ensures that
+  ## sequential and future backends visit the same bootstrap problems.
+  set.seed(args$seed)
+  boot_indices <- replicate(n.boot, sample.int(n, n, replace = TRUE),
+                            simplify = FALSE)
+  ## HC tie-breaking seed for bootstrap b = seed + b, giving each replicate a
+  ## distinct seed without risk of collisions for typical n.boot values.
+  hc_seeds <- args$seed + seq_len(n.boot)
+  ## NULL signals the no-shuffle fast path in .fit_boot_one (avoids copying
+  ## the permutation matrices for every bootstrap when nodeShuffle = FALSE).
+  node_permutations <- if (nodeShuffle) {
+    replicate(n.boot, sample.int(p), simplify = FALSE)
+  } else {
+    NULL
   }
 
-  .format_boot_result(result, p, n.boot, return)
+  run_one <- function(b) {
+    if (verbose) message("Processing bootstrap sample ", b)
+    node_perm <- if (!is.null(node_permutations)) node_permutations[[b]] else NULL
+    .fit_boot_one(b, args$Y, args$nodeType, args$whiteList, args$blackList,
+                  tol, args$maxStep, args$restart, hc_seeds[b],
+                  boot_indices[[b]], node_perm, verbose, debug, addDeleteOnly)
+  }
+
+  if (backend == "sequential") {
+    result <- vector("list", n.boot)
+    for (b in seq_len(n.boot)) {
+      result[[b]] <- run_one(b)
+    }
+  } else {
+    ## future backend: dispatch all replicates as independent async futures and
+    ## collect results.  seed = TRUE in future::future() suppresses the package's
+    ## L'Ecuyer-CMRG RNG warning; actual reproducibility is controlled by the
+    ## upfront set.seed() above, not by future's own RNG management.
+    if (!requireNamespace("future", quietly = TRUE)) {
+      stop("The future package is required for backend = 'future'.")
+    }
+    nw <- .resolve_future_workers(workers, n.boot, verbose)
+    old_plan <- future::plan()
+    on.exit(future::plan(old_plan), add = TRUE)
+    future::plan(future::multisession, workers = nw)
+    futures <- lapply(seq_len(n.boot), function(b) {
+      future::future(run_one(b), seed = TRUE)
+    })
+    result <- lapply(futures, future::value)
+  }
+
+  .format_boot_result(result, p, n.boot, output_type)
 }

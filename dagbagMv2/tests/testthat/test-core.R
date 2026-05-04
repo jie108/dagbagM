@@ -151,22 +151,22 @@ test_that("hc returns the same result with the same seed", {
 
 # -- hc_boot sequential -------------------------------------------------------
 
-test_that("hc_boot return='array' produces valid bootstrap DAGs", {
+test_that("hc_boot output_type='array' produces valid bootstrap DAGs", {
   y <- make_mixed_data()
   node_type <- c("c", "c", "c", "b")
   arr <- hc_boot(y, n.boot = 3L, nodeType = node_type,
-                 maxStep = 15, seed = 7, return = "array")
+                 maxStep = 15, seed = 7, output_type = "array")
   expect_equal(dim(arr), c(4L, 4L, 3L))
   for (b in seq_len(3L)) {
     expect_true(is_dag_matrix(arr[, , b]))
   }
 })
 
-test_that("hc_boot return='freq' produces a valid frequency matrix", {
+test_that("hc_boot output_type='freq' produces a valid frequency matrix", {
   y <- make_mixed_data()
   node_type <- c("c", "c", "c", "b")
   freq <- hc_boot(y, n.boot = 4L, nodeType = node_type,
-                  maxStep = 15, seed = 7, return = "freq")
+                  maxStep = 15, seed = 7, output_type = "freq")
   expect_equal(dim(freq), c(4L, 4L))
   expect_true(all(freq >= 0 & freq <= 1))
   expect_true(all(diag(freq) == 0))
@@ -176,26 +176,26 @@ test_that("hc_boot 'array' and 'freq' modes agree on frequencies", {
   y <- make_mixed_data()
   node_type <- c("c", "c", "c", "b")
   both <- hc_boot(y, n.boot = 4L, nodeType = node_type,
-                  maxStep = 15, seed = 7, return = "both")
+                  maxStep = 15, seed = 7, output_type = "both")
   freq_from_array <- apply(both$adjacency, c(1, 2), mean)
   expect_equal(both$freq, freq_from_array)
 })
 
 # -- score_shd / score_shd_freq edge cases ------------------------------------
 
-test_that("score_shd_freq with freqCutoff=1 returns a valid DAG", {
+test_that("score_shd_freq with freq.cutoff=1 returns a valid DAG", {
   set.seed(3)
   freq <- matrix(runif(16, 0, 0.9), 4, 4)
   diag(freq) <- 0
-  agg <- score_shd_freq(freq, freqCutoff = 1)
+  agg <- score_shd_freq(freq, freq.cutoff = 1)
   expect_true(is_dag_matrix(agg))
 })
 
-test_that("score_shd_freq with freqCutoff=0 returns a valid DAG", {
+test_that("score_shd_freq with freq.cutoff=0 returns a valid DAG", {
   set.seed(3)
   freq <- matrix(runif(16, 0, 0.9), 4, 4)
   diag(freq) <- 0
-  agg <- score_shd_freq(freq, freqCutoff = 0)
+  agg <- score_shd_freq(freq, freq.cutoff = 0)
   expect_true(is_dag_matrix(agg))
 })
 
@@ -203,9 +203,9 @@ test_that("score_shd and score_shd_freq agree on matching inputs", {
   y <- make_mixed_data()
   node_type <- c("c", "c", "c", "b")
   both <- hc_boot(y, n.boot = 6L, nodeType = node_type,
-                  maxStep = 15, seed = 5, return = "both")
-  agg_arr  <- score_shd(both$adjacency, alpha = 1, freqCutoff = 0.5)
-  agg_freq <- score_shd_freq(both$freq,  alpha = 1, freqCutoff = 0.5)
+                  maxStep = 15, seed = 5, output_type = "both")
+  agg_arr  <- score_shd(both$adjacency, alpha = 1, freq.cutoff = 0.5)
+  agg_freq <- score_shd_freq(both$freq,  alpha = 1, freq.cutoff = 0.5)
   expect_identical(agg_arr, agg_freq)
 })
 
