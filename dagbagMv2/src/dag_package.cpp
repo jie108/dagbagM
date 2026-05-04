@@ -266,10 +266,6 @@ int fill_design(MatrixXd& workspace, const Rcpp::NumericMatrix& Y,
 typedef Eigen::Ref<const MatrixXd> ConstMatRef;
 typedef Eigen::Ref<const VectorXd> ConstVecRef;
 
-MatrixXd crossprod_self(const ConstMatRef& A) {
-  return A.adjoint() * A;
-}
-
 // Gaussian MLE log-likelihood for the regression Y ~ X*beta + e, e ~ N(0,sigma^2*I).
 // beta_hat = (X'X)^{-1} X'Y  (solved via Cholesky of X'X).
 // sigma2_hat = ||Y - X*beta_hat||^2 / n  (MLE, divides by n not n-1).
@@ -277,7 +273,15 @@ MatrixXd crossprod_self(const ConstMatRef& A) {
 // Returns -Inf if X'X is singular, if beta is non-finite, or if sigma2 <= 0.
 double continuous_loglik(const ConstMatRef& X, const ConstVecRef& Y) {
   const int n = X.rows();
-  LLT<MatrixXd> llt(crossprod_self(X));
+  const int q = X.cols();
+  // X'X via rankUpdate fills only the lower triangle — LLT<MatrixXd> uses
+  // Lower by default, so the upper zeros are never read.  rankUpdate is
+  // ~2x faster than a full matrix multiply for symmetric positive-definite
+  // gram matrices (exploits symmetry, computes q*(q+1)/2 * n vs q^2 * n ops).
+  MatrixXd XtX(q, q);
+  XtX.setZero();
+  XtX.selfadjointView<Lower>().rankUpdate(X.adjoint());
+  LLT<MatrixXd> llt(XtX);
   if (llt.info() != Eigen::Success) {
     return -kInf;
   }
