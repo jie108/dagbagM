@@ -1,0 +1,4 @@
+useDynLib(dagbagM, .registration=TRUE)
+export("hc","hc_boot","score_shd","score_shd_freq","cal_order","moral_graph","vstructures","skeleton","compare.vstructures")
+importFrom(Rcpp, evalCpp)
+importFrom(stats, sd)

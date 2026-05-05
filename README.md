@@ -5,6 +5,7 @@
 ## Contents
 - [Reference](#Reference)
 - [Overview](#Overview)
+- [Major update disclosure](#major-update-disclosure)
 - [Installation](#Installation)
 - [Usage](#Usage)
 - [Arguments](#Arguments)
@@ -21,56 +22,87 @@ Chowdhury, S., Wang, R., Yu, Q. et al. DAGBagM: learning directed acyclic graphs
 
 ## Overview
 ```
-This repository contains two folders. 
-
 dagbagM: 
-contains the R package "dagbagMv2" for learning directed acycic graphs for mixture of continuous and binary variables
+contains the R package "dagbagM" for learning directed acyclic graphs for mixtures of continuous and binary variables
 
 ```
+
+## Major update disclosure
+
+This release is a major update to the package interface.
+
+Main user interface changes:
+
+- The package name is now `dagbagM`.
+- `hc_boot` now unifies sequential and parallel bootstrap fitting through the `future` framework.
+- `hc_boot` adds `backend` and `output_type` arguments. Use `backend = "sequential"` for one-by-one fitting and `backend = "future"` for parallel fitting. Use `output_type = "array"`, `"freq"`, or `"both"` to choose the returned bootstrap output.
+- `score_shd` continues to aggregate bootstrap adjacency arrays.
+- `score_shd_freq` is a new function for aggregating edge-frequency outputs from `hc_boot(..., output_type = "freq")`.
+- Argument names changed from `whitelist` and `blocklist` to `whiteList` and `blackList`.
+- The frequency threshold argument changed from `threshold` to `freq.cutoff`.
 
 
 ## Installation
+
+To prevent lazy loading of a previously installed version and avoid accidentally
+using the old package, first remove any existing `dagbagM` installation, quit R,
+restart a fresh R session, and then install the package:
+
+```
+remove.packages("dagbagM")
+q()
+```
+
+After restarting R:
+
 ```
 #install.packages("devtools")
 library(devtools)
-install_github("jie108/dagbagM",subdir="dagbagMv2")
+install_github("jie108/dagbagM",subdir="dagbagM")
 ```
 or alternatively
 ```
 #install.packages("remotes")
 library(remotes)
-remotes::install_github("jie108/dagbagM",subdir="dagbagMv2")
+remotes::install_github("jie108/dagbagM",subdir="dagbagM")
 ```
 or install to a local library
 ```
 .libPaths("~/R_libs")
-install_github("jie108/dagbagM",subdir="dagbagMv2", lib = "~/R_libs")
+install_github("jie108/dagbagM",subdir="dagbagM", lib = "~/R_libs")
+```
+
+After installation, check the installed version and confirm that the correct
+package version is loaded:
+
+```
+packageVersion("dagbagM")
 ```
 
 ## Usage
 
 ```
 hc: Learn a DAG model by hill climbing for mixture of continuous and binary variables.
-dagbagMv2::hc(Y, nodeType, whiteList, blackList, standardize, tol, maxStep, restart, seed,
+dagbagM::hc(Y, nodeType, whiteList, blackList, standardize, tol, maxStep, restart, seed,
               verbose, debug, addDeleteOnly)
 
 hc_boot: Learn a DAG model for every bootstrap resample. Supports sequential and
          parallel (future multisession) execution via the backend argument.
-dagbagMv2::hc_boot(Y, n.boot, nodeType, whiteList, blackList, standardize, tol, maxStep,
+dagbagM::hc_boot(Y, n.boot, nodeType, whiteList, blackList, standardize, tol, maxStep,
                    restart, seed, nodeShuffle, backend, workers, verbose, debug,
                    addDeleteOnly, output_type)
 
 score_shd: Aggregate an ensemble of DAGs using generalized structural hamming distance.
-dagbagMv2::score_shd(boot.adj, alpha, freq.cutoff, whiteList, blackList, maxStep, verbose)
+dagbagM::score_shd(boot.adj, alpha, freq.cutoff, whiteList, blackList, maxStep, verbose)
 
 score_shd_freq: Aggregate from an edge frequency matrix using generalized structural hamming distance.
-dagbagMv2::score_shd_freq(freq, alpha, freq.cutoff, whiteList, blackList, maxStep, verbose)
+dagbagM::score_shd_freq(freq, alpha, freq.cutoff, whiteList, blackList, maxStep, verbose)
 ```
 
 
 ## Arguments
 
-### Arguments for dagbagMv2::hc and dagbagMv2::hc_boot
+### Arguments for dagbagM::hc and dagbagM::hc_boot
   
 | Parameter | Default | Description |
 | :--- | :---: | :--- |
@@ -93,7 +125,7 @@ dagbagMv2::score_shd_freq(freq, alpha, freq.cutoff, whiteList, blackList, maxSte
 | output_type (hc_boot only) | "array" | bootstrap output mode: "array" (p x p x B adjacency array), "freq" (p x p edge selection frequencies), or "both" |
 
 
-### Arguments for dagbagMv2::score_shd and dagbagMv2::score_shd_freq
+### Arguments for dagbagM::score_shd and dagbagM::score_shd_freq
   
 | Parameter | Default | Description |
 | :--- | :---: | :--- |
@@ -110,7 +142,7 @@ dagbagMv2::score_shd_freq(freq, alpha, freq.cutoff, whiteList, blackList, maxSte
 
 ## Value
 
-### Value for dagbagMv2::hc
+### Value for dagbagM::hc
 
 a list of five components
 
@@ -122,7 +154,7 @@ a list of five components
 | deltaMin | score change (delta) at every accepted step |
 | steps | total number of accepted steps |
 
-### Value for dagbagMv2::hc_boot
+### Value for dagbagM::hc_boot
 
 depends on the `output_type` argument
 
@@ -133,7 +165,7 @@ depends on the `output_type` argument
 | "both" | a list with components `adjacency` (array) and `freq` (matrix) |
 
 
-### Value for dagbagMv2::score_shd and dagbagMv2::score_shd_freq
+### Value for dagbagM::score_shd and dagbagM::score_shd_freq
 
 | Object | Description |
 | :--- | :--- |
@@ -144,7 +176,7 @@ depends on the `output_type` argument
 ## Examples
 ```
 rm(list=ls())
-library(dagbagMv2)
+library(dagbagM)
 data(example)
 Y.n <- example$Y      # data matrix
 p   <- ncol(Y.n)      # number of nodes: p = 102
@@ -159,7 +191,7 @@ sum(true.dir)  # number of edges: |E| = 109
 
 # (i) DAG learning by hill climbing: no bootstrap resample
 
-temp     <- dagbagMv2::hc(Y = Y.n, nodeType = rep("c", p), whiteList = NULL,
+temp     <- dagbagM::hc(Y = Y.n, nodeType = rep("c", p), whiteList = NULL,
                           blackList = NULL, tol = 1e-6, standardize = TRUE,
                           maxStep = 1000, restart = 1, seed = 1, verbose = FALSE)
 adj.temp <- temp$adjacency
@@ -177,7 +209,7 @@ sum(adj.temp.ske==1 & true.ske==1) / sum(true.ske==1)      ## Power: 0.8807339
 
 # (ii) DAG learning by hill climbing: bootstrap resamples (sequential)
 
-boot.adj <- dagbagMv2::hc_boot(Y = Y.n, n.boot = 100, nodeType = rep("c", p),
+boot.adj <- dagbagM::hc_boot(Y = Y.n, n.boot = 100, nodeType = rep("c", p),
                                whiteList = NULL, blackList = NULL,
                                standardize = TRUE, tol = 1e-6, maxStep = 1000,
                                restart = 1, seed = 1, nodeShuffle = TRUE,
@@ -185,10 +217,10 @@ boot.adj <- dagbagMv2::hc_boot(Y = Y.n, n.boot = 100, nodeType = rep("c", p),
                                verbose = FALSE)
 
 # For parallel execution across multiple cores, use backend = "future":
-# boot.adj <- dagbagMv2::hc_boot(..., backend = "future", workers = 4, output_type = "array")
+# boot.adj <- dagbagM::hc_boot(..., backend = "future", workers = 4, output_type = "array")
 
 # (iii) Bootstrap aggregation: freq.cutoff=0.5 corresponds to 50% selection frequency cutoff
-adj.bag <- dagbagMv2::score_shd(boot.adj, alpha = 1, freq.cutoff = 0.5)
+adj.bag <- dagbagM::score_shd(boot.adj, alpha = 1, freq.cutoff = 0.5)
 
 # (iv) Evaluations
 ## results on DAG estimation

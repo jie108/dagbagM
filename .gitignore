@@ -1,6 +1,6 @@
-# Ignore all top-level directories except dagbagMv2
+# Ignore all top-level directories except dagbagM
 /*/
-!/dagbagMv2/
+!/dagbagM/
 
 # Ignore specific files
 dagbagMv2_implementation_notes.md
