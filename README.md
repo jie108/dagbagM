@@ -29,7 +29,7 @@ contains the R package "dagbagM" for learning directed acyclic graphs for mixtur
 
 ## Major update disclosure
 
-This release is a major update to the package interface.
+This release is a major update with bug fixes, efficiency improvements, and package interface changes.
 
 Main user interface changes:
 
