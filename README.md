@@ -33,13 +33,12 @@ This release is a major update to the package interface.
 
 Main user interface changes:
 
-- The package name is now `dagbagM`.
 - `hc_boot` now unifies sequential and parallel bootstrap fitting through the `future` framework.
 - `hc_boot` adds `backend` and `output_type` arguments. Use `backend = "sequential"` for one-by-one fitting and `backend = "future"` for parallel fitting. Use `output_type = "array"`, `"freq"`, or `"both"` to choose the returned bootstrap output.
 - `score_shd` continues to aggregate bootstrap adjacency arrays.
 - `score_shd_freq` is a new function for aggregating edge-frequency outputs from `hc_boot(..., output_type = "freq")`.
-- Argument names changed from `whitelist` and `blocklist` to `whiteList` and `blackList`.
-- The frequency threshold argument changed from `threshold` to `freq.cutoff`.
+- `score_shd`: Argument names changed from `whitelist` and `blocklist` to `whiteList` and `blackList`.
+- `score_shd`: The frequency threshold argument changed from `threshold` to `freq.cutoff`.
 
 
 ## Installation
