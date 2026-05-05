@@ -243,7 +243,7 @@ hc <- function(Y, nodeType = NULL, whiteList = NULL, blackList = NULL,
   capped
 }
 
-hc_boot <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
+hc_boot <- function(Y, n.boot = 100L, nodeType = NULL, whiteList = NULL,
                     blackList = NULL, standardize = TRUE, tol = 1e-6,
                     maxStep = 2000L, restart = 1L, seed = 1L,
                     nodeShuffle = TRUE,
@@ -414,7 +414,7 @@ hc_boot <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
   curRes$adjacency[node.index, node.index, drop = FALSE]
 }
 
-hc_boot_parallel <- function(Y, n.boot = 1L, nodeType = NULL, whiteList = NULL,
+hc_boot_parallel <- function(Y, n.boot = 100L, nodeType = NULL, whiteList = NULL,
                              blackList = NULL, standardize = TRUE, tol = 1e-6,
                              maxStep = 2000L, restart = 1L, seed = 1L,
                              nodeShuffle = TRUE, numThread = 2L,

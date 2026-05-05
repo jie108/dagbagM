@@ -75,7 +75,7 @@ dagbagMv2::score_shd_freq(freq, alpha, freq.cutoff, whiteList, blackList, maxSte
 | Parameter | Default | Description |
 | :--- | :---: | :--- |
 | Y | | an n by p data matrix: n -- sample size, p -- number of variables |
-| n.boot (hc_boot only) | 1 | an integer: the number of bootstrap resamples of the data matrix Y |
+| n.boot (hc_boot only) | 100 | an integer: the number of bootstrap resamples of the data matrix Y |
 | nodeType | NULL | a vector of length p specifying the type of each variable: "c" for continuous and "b" for binary |
 | whiteList | NULL | a p by p logical or 0-1 matrix: if the (i,j)th-entry is TRUE/1, the edge i-->j will always be included in the DAG |
 | blackList | NULL | a p by p logical or 0-1 matrix: if the (i,j)th-entry is TRUE/1, the edge i-->j will be excluded from the DAG |
