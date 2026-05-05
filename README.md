@@ -72,7 +72,7 @@ install_github("jie108/dagbagM",subdir="dagbagM", lib = "~/R_libs")
 ```
 
 After installation, check the installed version and confirm that the correct
-package version is loaded:
+package version is loaded (you should see ‘2.1’):
 
 ```
 packageVersion("dagbagM")
