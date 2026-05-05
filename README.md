@@ -33,11 +33,12 @@ This release is a major update to the package interface.
 
 Main user interface changes:
 
+- The package name has been restored from `dagbagMv2` to `dagbagM`.
 - `hc_boot` now unifies sequential and parallel bootstrap fitting through the `future` framework.
 - `hc_boot` adds `backend` and `output_type` arguments. Use `backend = "sequential"` for one-by-one fitting and `backend = "future"` for parallel fitting. Use `output_type = "array"`, `"freq"`, or `"both"` to choose the returned bootstrap output.
 - `score_shd` continues to aggregate bootstrap adjacency arrays.
 - `score_shd_freq` is a new function for aggregating edge-frequency outputs from `hc_boot(..., output_type = "freq")`.
-- `score_shd`: Argument names changed from `whitelist` and `blocklist` to `whiteList` and `blackList`.
+- `score_shd`: Argument names changed from `whitelist` and `blacklist` to `whiteList` and `blackList`.
 - `score_shd`: The frequency threshold argument changed from `threshold` to `freq.cutoff`.
 
 
@@ -48,7 +49,9 @@ using the old package, first remove any existing `dagbagM` installation, quit R,
 restart a fresh R session, and then install the package:
 
 ```
-remove.packages("dagbagM")
+if ("dagbagM" %in% rownames(installed.packages())) {
+  remove.packages("dagbagM")
+}
 q()
 ```
 
@@ -72,7 +75,7 @@ install_github("jie108/dagbagM",subdir="dagbagM", lib = "~/R_libs")
 ```
 
 After installation, check the installed version and confirm that the correct
-package version ‘2.1’ is loaded:
+package version `2.1` is loaded:
 
 ```
 packageVersion("dagbagM")
