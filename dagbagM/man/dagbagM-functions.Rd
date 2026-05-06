@@ -103,5 +103,30 @@ cal_order(agg)
 skeleton(agg)
 moral_graph(agg)
 vstructures(agg)
+
+## Example using bundled continuous data plus one binary child
+data(example)
+Y0 <- example$Y[1:80, 1:2]
+colnames(Y0) <- c("parent1", "parent2")
+
+set.seed(123)
+eta <- 0.9 * scale(Y0[, "parent1"]) - 0.7 * scale(Y0[, "parent2"])
+binary_child <- rbinom(nrow(Y0), 1, plogis(eta))
+Ymix <- cbind(Y0, binary_child = binary_child)
+nodeType2 <- c("c", "c", "b")
+
+## Optional whitelist encodes the known parent set for the binary node
+whiteList2 <- matrix(FALSE, 3, 3)
+whiteList2[1:2, 3] <- TRUE
+
+fit2 <- hc(Ymix, nodeType2, whiteList = whiteList2, maxStep = 50, seed = 2)
+fit2$adjacency
+
+boot_freq2 <- hc_boot(Ymix, n.boot = 5, nodeType = nodeType2,
+                      whiteList = whiteList2, maxStep = 50, seed = 2,
+                      output_type = "freq")
+agg2 <- score_shd_freq(boot_freq2, freq.cutoff = 0.5,
+                       whiteList = whiteList2)
+agg2
 }
 \keyword{models}

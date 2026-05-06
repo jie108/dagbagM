@@ -175,6 +175,7 @@ depends on the `output_type` argument
 
   
 ## Examples
+### Example 1: continuous nodes from the bundled data
 ```
 rm(list=ls())
 library(dagbagM)
@@ -244,6 +245,56 @@ vstr.corr    <- compare.vstructures(target.vstructures = adj.bag.vstr,
                                     true.vstructures   = true.vstr)
 1 - nrow(vstr.corr) / nrow(adj.bag.vstr)  ## FDR:   0.34
 nrow(vstr.corr) / nrow(true.vstr)         ## Power: 0.4285714
+```
+
+### Example 2: binary node with two continuous parents
+
+This example starts from two continuous variables in `data(example)`, then adds
+one binary child generated from both continuous parents. It uses
+`hc_boot(..., output_type = "freq")` and aggregates directly with
+`score_shd_freq()`.
+
+```
+library(dagbagM)
+data(example)
+
+Y0 <- example$Y[, 1:2]
+colnames(Y0) <- c("parent1", "parent2")
+
+set.seed(123)
+eta <- 0.9 * scale(Y0[, "parent1"]) - 0.7 * scale(Y0[, "parent2"])
+binary_child <- rbinom(nrow(Y0), size = 1, prob = plogis(eta))
+
+Y.mix <- cbind(Y0, binary_child = binary_child)
+nodeType.mix <- c("c", "c", "b")
+
+# The data-generating parent set is parent1 -> binary_child <- parent2.
+whiteList.mix <- matrix(FALSE, 3, 3)
+colnames(whiteList.mix) <- rownames(whiteList.mix) <- colnames(Y.mix)
+whiteList.mix[c("parent1", "parent2"), "binary_child"] <- TRUE
+
+fit.mix <- dagbagM::hc(Y = Y.mix, nodeType = nodeType.mix,
+                       whiteList = whiteList.mix,
+                       standardize = TRUE, tol = 1e-6,
+                       maxStep = 1000, restart = 1,
+                       seed = 2, verbose = FALSE)
+fit.mix$adjacency
+
+boot.freq.mix <- dagbagM::hc_boot(Y = Y.mix, n.boot = 100,
+                                  nodeType = nodeType.mix,
+                                  whiteList = whiteList.mix,
+                                  standardize = TRUE, tol = 1e-6,
+                                  maxStep = 1000, restart = 1,
+                                  seed = 2, nodeShuffle = TRUE,
+                                  backend = "sequential",
+                                  output_type = "freq",
+                                  verbose = FALSE)
+
+adj.bag.mix <- dagbagM::score_shd_freq(freq = boot.freq.mix,
+                                       alpha = 1,
+                                       freq.cutoff = 0.5,
+                                       whiteList = whiteList.mix)
+adj.bag.mix
 ```
 
 ## Contributions
