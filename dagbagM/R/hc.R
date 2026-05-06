@@ -354,9 +354,11 @@ hc_boot <- function(Y, n.boot = 100L, nodeType = NULL, whiteList = NULL,
     }
   } else {
     ## future backend: dispatch all replicates as independent async futures and
-    ## collect results.  seed = FALSE: workers make no R RNG calls (all
-    ## randomness is pre-generated upfront), so future's RNG management is
-    ## unnecessary and omitting it avoids spurious L'Ecuyer-CMRG overhead.
+    ## collect results.  seed = NULL: skips future's RNG state check; Rcpp
+    ## calls GetRNGstate/PutRNGstate as an API side-effect even when no random
+    ## numbers are drawn, which triggers a false-positive "UNRELIABLE VALUE"
+    ## warning with seed = FALSE. Reproducibility is guaranteed by the
+    ## pre-generated boot_indices and hc_seeds, not by R's RNG.
     if (!requireNamespace("future", quietly = TRUE)) {
       stop("The future package is required for backend = 'future'.")
     }
