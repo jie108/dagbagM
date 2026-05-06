@@ -257,6 +257,9 @@ one binary child generated from both continuous parents. It uses
 ```
 library(dagbagM)
 data(example)
+Y.n <- example$Y      # data matrix
+p   <- ncol(Y.n)      # number of nodes: p = 102
+n   <- nrow(Y.n)      # sample size: n = 102
 
 Y0 <- example$Y[, 1:2]
 colnames(Y0) <- c("parent1", "parent2")
@@ -265,36 +268,51 @@ set.seed(123)
 eta <- 0.9 * scale(Y0[, "parent1"]) - 0.7 * scale(Y0[, "parent2"])
 binary_child <- rbinom(nrow(Y0), size = 1, prob = plogis(eta))
 
-Y.mix <- cbind(Y0, binary_child = binary_child)
-nodeType.mix <- c("c", "c", "b")
+Y.mix <- cbind(Y.n, binary_child = binary_child)
+nodeType.mix <- c(rep("c", p), "b")
 
-# The data-generating parent set is parent1 -> binary_child <- parent2.
-whiteList.mix <- matrix(FALSE, 3, 3)
-colnames(whiteList.mix) <- rownames(whiteList.mix) <- colnames(Y.mix)
-whiteList.mix[c("parent1", "parent2"), "binary_child"] <- TRUE
+true.dir.mix <- matrix(0, p + 1, p + 1)
+true.dir.mix[1:p, 1:p] <- example$true.dir
+true.dir.mix[c(1, 2), p + 1] <- 1
 
 fit.mix <- dagbagM::hc(Y = Y.mix, nodeType = nodeType.mix,
-                       whiteList = whiteList.mix,
+                       whiteList = NULL,
                        standardize = TRUE, tol = 1e-6,
                        maxStep = 1000, restart = 1,
                        seed = 2, verbose = FALSE)
-fit.mix$adjacency
+adj.mix <- fit.mix$adjacency
 
+# Overall DAG estimation
+sum(adj.mix==1 & true.dir.mix==0) / sum(adj.mix==1)  ## FDR: 0.8779762
+sum(adj.mix==1 & true.dir.mix==1) / sum(true.dir.mix==1)  ## Power: 0.3693694
+
+# Recovery of the two added continuous -> binary edges
+sum(adj.mix[c(1, 2), p + 1] == 1) / 2  ## Power for added binary-node parents: 0.3693694
+adj.mix[c(1, 2), p + 1] # TRUE TRUE
+
+# aggregation 
 boot.freq.mix <- dagbagM::hc_boot(Y = Y.mix, n.boot = 100,
                                   nodeType = nodeType.mix,
-                                  whiteList = whiteList.mix,
+                                  whiteList = NULL,
                                   standardize = TRUE, tol = 1e-6,
                                   maxStep = 1000, restart = 1,
                                   seed = 2, nodeShuffle = TRUE,
-                                  backend = "sequential",
+                                  backend = "future", workers=5,
                                   output_type = "freq",
                                   verbose = FALSE)
 
 adj.bag.mix <- dagbagM::score_shd_freq(freq = boot.freq.mix,
                                        alpha = 1,
                                        freq.cutoff = 0.5,
-                                       whiteList = whiteList.mix)
-adj.bag.mix
+                                       whiteList = NULL)
+                                       
+# Overall DAG estimation after bootstrap aggregation
+sum(adj.bag.mix==1 & true.dir.mix==0) / sum(adj.bag.mix==1)  ## FDR: 0.3783784
+sum(adj.bag.mix==1 & true.dir.mix==1) / sum(true.dir.mix==1)  ## Power: 0.6216216
+
+# Recovery and bootstrap frequencies for the two added continuous -> binary edges
+sum(adj.bag.mix[c(1, 2), p + 1] == 1) / 2  ## Power for added binary-node parents: 0
+boot.freq.mix[c(1, 2), p + 1] # 0.28 0.31
 ```
 
 ## Contributions
