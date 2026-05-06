@@ -215,7 +215,8 @@ boot.adj <- dagbagM::hc_boot(Y = Y.n, n.boot = 100, nodeType = rep("c", p),
                                whiteList = NULL, blackList = NULL,
                                standardize = TRUE, tol = 1e-6, maxStep = 1000,
                                restart = 1, seed = 1, nodeShuffle = TRUE,
-                               backend = "sequential", output_type = "array",
+                               backend = "sequential",
+                               output_type = "array",
                                verbose = FALSE)
 
 # For parallel execution across multiple cores, use backend = "future":
