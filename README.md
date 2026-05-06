@@ -297,7 +297,7 @@ boot.freq.mix <- dagbagM::hc_boot(Y = Y.mix, n.boot = 100,
                                   standardize = TRUE, tol = 1e-6,
                                   maxStep = 1000, restart = 1,
                                   seed = 2, nodeShuffle = TRUE,
-                                  backend = "future", workers=5,
+                                  backend = "future", workers = 5,
                                   output_type = "freq",
                                   verbose = FALSE)
 
