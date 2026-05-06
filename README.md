@@ -287,7 +287,7 @@ sum(adj.mix==1 & true.dir.mix==0) / sum(adj.mix==1)  ## FDR: 0.8779762
 sum(adj.mix==1 & true.dir.mix==1) / sum(true.dir.mix==1)  ## Power: 0.3693694
 
 # Recovery of the two added continuous -> binary edges
-sum(adj.mix[c(1, 2), p + 1] == 1) / 2  ## Power for added binary-node parents: 0.3693694
+sum(adj.mix[c(1, 2), p + 1] == 1) / 2  ## Power for added binary-node parents: 1
 adj.mix[c(1, 2), p + 1] # TRUE TRUE
 
 # aggregation 
