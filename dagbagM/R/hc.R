@@ -354,9 +354,9 @@ hc_boot <- function(Y, n.boot = 100L, nodeType = NULL, whiteList = NULL,
     }
   } else {
     ## future backend: dispatch all replicates as independent async futures and
-    ## collect results.  seed = TRUE in future::future() suppresses the package's
-    ## L'Ecuyer-CMRG RNG warning; actual reproducibility is controlled by the
-    ## upfront set.seed() above, not by future's own RNG management.
+    ## collect results.  seed = FALSE: workers make no R RNG calls (all
+    ## randomness is pre-generated upfront), so future's RNG management is
+    ## unnecessary and omitting it avoids spurious L'Ecuyer-CMRG overhead.
     if (!requireNamespace("future", quietly = TRUE)) {
       stop("The future package is required for backend = 'future'.")
     }
@@ -365,7 +365,7 @@ hc_boot <- function(Y, n.boot = 100L, nodeType = NULL, whiteList = NULL,
     on.exit(future::plan(old_plan), add = TRUE)
     future::plan(future::multisession, workers = nw)
     futures <- lapply(seq_len(n.boot), function(b) {
-      future::future(run_one(b), seed = TRUE)
+      future::future(run_one(b), seed = FALSE)
     })
     result <- lapply(futures, future::value)
   }

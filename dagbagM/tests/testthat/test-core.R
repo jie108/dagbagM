@@ -209,6 +209,21 @@ test_that("score_shd and score_shd_freq agree on matching inputs", {
   expect_identical(agg_arr, agg_freq)
 })
 
+# -- sequential vs future backend identity -----------------------------------
+
+test_that("hc_boot sequential and future backends produce identical results", {
+  skip_if_not_installed("future")
+  y <- make_mixed_data()
+  node_type <- c("c", "c", "c", "b")
+  seq_out <- hc_boot(y, n.boot = 4L, nodeType = node_type,
+                     maxStep = 15, seed = 99, backend = "sequential",
+                     output_type = "array")
+  fut_out <- hc_boot(y, n.boot = 4L, nodeType = node_type,
+                     maxStep = 15, seed = 99, backend = "future", workers = 2L,
+                     output_type = "array")
+  expect_identical(seq_out, fut_out)
+})
+
 # -- overflow / bounds validation ---------------------------------------------
 
 test_that("hc rejects p > 46000", {
