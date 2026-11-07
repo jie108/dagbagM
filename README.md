@@ -318,4 +318,4 @@ boot.freq.mix[c(1, 2), p + 1] # 0.28 0.31
 
 ## Contributions
 
-If you find small bugs, larger issues, or have suggestions, please email the maintainer at <jiepeng108@gmail.com>. Contributions (via pull requests or otherwise) are welcome.
+If you find small bugs, larger issues, or have suggestions, please let us know. Contributions (via pull requests or otherwise) are welcome.
